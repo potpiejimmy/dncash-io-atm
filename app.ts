@@ -15,24 +15,27 @@ if (!config.DN_CASH_API_KEY || !config.DN_CASH_API_SECRET) {
 
 let ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
 
+if(config.IS_TEST_MODE)
+    test.init();
+
 ws.onopen = () => {
     console.log("CMD V4 WebSocket OPEN");
-};
-
-ws.onerror = m => {
-    console.log("CMD V4 WebSocket ERR: " + m.message);
 };
 
 ws.onclose = m => {
     console.log("CMD V4 WebSocket CLOSE: " + m.reason);
 };
 
-ws.onmessage = m => {
-    let event = JSON.parse(m.data.toString());
-    console.log("EVENT:" + JSON.stringify(event));
-    if(event.eventType === "dispense" && event.timeout && !event.notesTaken) {
-        sendRetract();
-    }
+function waitForDispenseEvent() : Promise<any> {
+    return new Promise(function(resolve, reject) {
+        ws.onmessage = m => {
+            resolve(m.data);
+        };
+
+        ws.onerror = m => {
+            reject("CMD V4 WebSocket ERR: " + m.message);
+        };
+    });
 }
 
 cashApi.createTrigger(99999999999).then(res => {
@@ -40,16 +43,39 @@ cashApi.createTrigger(99999999999).then(res => {
     let c = mqtt.connect(config.DN_MQTT_URL);
     c.on('connect', () => {
         console.log("MQTT connected");
-        this.nfctrigger = res.triggercode;
         c.subscribe('dncash-io/trigger/' + res.triggercode);
     });
     c.on('message', (topic, message) => {
         console.log("Received token: " + message.toString() + "\n");
         let msg = JSON.parse(message.toString());
-        tokenReceived(msg.token).then(res => {
-            //send retract or not retract event
-            if(config.IS_TEST_MODE) //execute retract
-                test.dispenseFailed();
+        dispenseMoney(msg.token).then(dispenseResponse => {
+            if(!dispenseResponse) {
+                //something went wrong, update token!
+                cashApi.confirmToken(msg.token.uuid, createTokenResponse("FAILED",0)).then(token => console.log("failed token: " + JSON.stringify(token)));
+            } else {
+                //waiting for CMD V4 dispense Event response
+                waitForDispenseEvent().then(message => {
+                    let event = JSON.parse(message.toString());
+                    if(event.eventType === "dispense") {
+                        if(event.timeout && !event.notesTaken) {
+                            sendRetract().then(() => {
+                                cashApi.confirmToken(msg.token.uuid, createTokenResponse("RETRACTED",0)).then(token => console.log("retracted token: " + JSON.stringify(token)));
+                            });
+                        } else if(!event.timeout && event.notesTaken) {
+                            getCassetteData().then(cassetteData => {
+                                cashApi.confirmToken(msg.token.uuid, createTokenResponse("COMPLETED", calculateCashoutAmount(cassetteData, dispenseResponse))).then(token => console.log("confirmed token: " + JSON.stringify(token)));
+                            });
+                        }
+                    }
+                });
+            }
+
+            //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET
+            if(config.IS_TEST_MODE)
+                test.sendTestResponse()
+                
+        }).catch(err => {
+            console.log(err);
         });
     });
     c.on('error', err => {
@@ -57,37 +83,62 @@ cashApi.createTrigger(99999999999).then(res => {
     });
 })
 
-function tokenReceived(token: any) : Promise<any> {
+function dispenseMoney(token: any) : Promise<any> {
     //call CMDV4 API and get Cassette Info
     return getCassetteData().then(cassetteData => {
-        console.log("Cassettes: " + cassetteData + "\n");
-        let cashoutRequest = util.findPerfectCashoutDenomination(cassetteData, token);
-        console.log("CashoutRequest: " + JSON.stringify(cashoutRequest) + "\n");
-        //call CMDV4 API to dispense notes
-        return dispense(cashoutRequest).then(res => {
-            console.log("dispensed: " + JSON.stringify(res) + "\n");
-            return res;
-        });
+        if(cassetteData) {
+            let denomResponse = util.findPerfectCashoutDenomination(cassetteData, token);
+
+            if(denomResponse.foundDenom)
+                //call CMDV4 API to dispense notes
+                return dispense(denomResponse.cashoutRequest);
+        }
+
+        return Promise.resolve(false);
     });
+}
+
+function createTokenResponse(tokenState: string, amount: Number): any {
+    return {
+        amount: amount,
+        state: tokenState,
+        lockrefname: "CMD V4 API"
+    }
+}
+
+function calculateCashoutAmount(cassetteData: any, dispenseResponse: any): any {
+    let cashoutAmount = 0;
+    for(var key in cassetteData) {
+        let cassette = cassetteData[key];
+        for(var dispenseKey in dispenseResponse) {
+            if(dispenseKey.endsWith("dispenseCount")) {
+                if(dispenseKey.substring(0,1) === key) {
+                    cashoutAmount += cassette.denomination * dispenseResponse[dispenseKey];
+                    delete dispenseResponse[dispenseKey];
+                }
+            }
+        }
+    }
+
+    return cashoutAmount;
 }
 
 function getCassetteData() : Promise<any> {
     //call CMDV4 API and get Cassette Info
-    return fetch.default(config.CMD_V4_API_URL+"cassettes", { headers: {"Content-Type": "application/json"}, method: "GET"}).then(res => res.json()).then(res => {
-        return util.parseCassetteData(res);
-    });
+    return fetch.default(config.CMD_V4_API_URL+"cassettes", { headers: {"Content-Type": "application/json"}, method: "GET"}).then(res => {
+            if(res.ok) return util.parseCassetteData(res.json());
+            else return Promise.resolve(false);
+        });
 }
 
 function dispense(cashoutRequest: any) : Promise<any> {
-    return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST"}, cashoutRequest).then(res => res.json()).then(res => {
-        console.log(JSON.stringify(res));
-        return res;
-    });
+    return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(res => {
+                if(!res.ok) return Promise.resolve(false);
+                else return res.json();
+            });
 }
 
 function sendRetract() {
     console.log("sending retract...");
-    return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST"}, {"retractWithTray": true}).then(res => res.json()).then(res => {
-        console.log(JSON.stringify(res)+"\n");
-    });
+    return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify({"retractWithTray": true})}).then(res => res.json());
 }

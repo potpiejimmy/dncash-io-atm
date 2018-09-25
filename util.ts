@@ -30,6 +30,8 @@ export function findPerfectCashoutDenomination(availableCassettes: any, token: a
         "offerNotesWaitTime":20
     };
 
+    let foundDenom = false;
+
     if(token.info && token.info.denomData) {
         let denomData = token.info.denomData.filter(value => value.c > 0);
         for(var key in availableCassettes) {
@@ -38,6 +40,7 @@ export function findPerfectCashoutDenomination(availableCassettes: any, token: a
                 let cassette = availableCassettes[key];
                 for(let i = 0; i < denomData.length; i++) {
                     if(cassette.denomination == denomData[i].d && cassette.count > denomData[i].c) {
+                        foundDenom = true;
                         cashoutDenom[key+"count"] = denomData[i].c;
                         //delete currency denom
                         denomData.splice(i,1);
@@ -57,7 +60,8 @@ export function findPerfectCashoutDenomination(availableCassettes: any, token: a
                         //check if we have correct currency symbol in both cases
                         if(availableCassettes[key].currency == token.symbol) {
                             let cassette = availableCassettes[key];
-                            if(amountLeft%cassette.denomination == 0 && cassette.count > denomData[i].c) {
+                            if(amountLeft%cassette.denomination == 0 && cassette.count > denomData[i].c && amountLeft/cassette.denomination < 20) {
+                                foundDenom = true;
                                 cashoutDenom[key+"count"] = amountLeft/cassette.denomination;
                                 //delete currency denom
                                 denomData.splice(i,1);
@@ -67,9 +71,8 @@ export function findPerfectCashoutDenomination(availableCassettes: any, token: a
                     }
                 }
             }
-
         }
     }
 
-    return cashoutDenom;
+    return {foundDenom: foundDenom, cashoutDenom: cashoutDenom};
 }

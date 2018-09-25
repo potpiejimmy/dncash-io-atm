@@ -8,8 +8,10 @@ export const DN_MQTT_URL = process.env.DN_MQTT_URL || 'wss://test.mosquitto.org:
 //DEVICE_ID FOR THIS ATM
 export const DN_DEVICE_ID = process.env.DN_DEVICE_ID || '9c1c1f8f-a00b-45d0-849c-4138a5f38453';
 //CMD V4 API URL
-export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "https://154a1710-6eab-45f2-8e45-5e01ecfc5564.mock.pstmn.io/";
+export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "https://83bd250b-1281-4d37-835b-90e1cefa6356.mock.pstmn.io/";
 //CMD V4 EVENT API URL
 export const CMD_V4_API_EVENT_URL = process.env.CMD_V4_API_EVENT_URL || "ws://localhost:8899/cmdv4/v1/events";
 //PARAMETER FOR TESTMODE
 export const IS_TEST_MODE = process.env.IS_TEST_MODE || true;
+
+export const IS_OK_DISPENSE = process.env.IS_OK_DISPENSE || true;
