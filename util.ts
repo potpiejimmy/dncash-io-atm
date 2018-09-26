@@ -8,15 +8,15 @@ export function parseCassetteData(cassetteApiInfo: any): any {
                     cassettes[id] = {};
 
                 if(key.endsWith("CUR")) {
-                    cassettes[key.substring(0,1)]["currency"] = cassetteApiInfo[key];
+                    cassettes[id]["currency"] = cassetteApiInfo[key];
                 }
                 
                 if(key.endsWith("VAL")) {
-                    cassettes[key.substring(0,1)]["denomination"] = cassetteApiInfo[key]*100;
+                    cassettes[id]["denomination"] = cassetteApiInfo[key]*100;
                 }
     
                 if(key.endsWith("ACT")) {
-                    cassettes[key.substring(0,1)]["count"] = cassetteApiInfo[key];
+                    cassettes[id]["count"] = cassetteApiInfo[key];
                 }
             }
         }
@@ -39,7 +39,7 @@ export function findPerfectCashoutDenomination(availableCassettes: any, token: a
             if(availableCassettes[key].currency == token.symbol && denomData.length > 0) {
                 let cassette = availableCassettes[key];
                 for(let i = 0; i < denomData.length; i++) {
-                    if(cassette.denomination == denomData[i].d && cassette.count > denomData[i].c) {
+                    if(cassette.denomination == denomData[i].d && cassette.count > denomData[i].c && denomData[i].c < 20) {
                         foundDenom = true;
                         cashoutDenom[key+"count"] = denomData[i].c;
                         //delete currency denom

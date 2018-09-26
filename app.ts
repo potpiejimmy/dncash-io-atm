@@ -8,15 +8,15 @@ import * as test from './test';
 
 console.log("=== The ultimate banking machine API: " + new Date() + " ===\n");
 
+if(config.IS_TEST_MODE)
+    test.init();
+
 if (!config.DN_CASH_API_KEY || !config.DN_CASH_API_SECRET) {
-    console.log("Please set DN_CLEARING_API_KEY and DN_CLEARING_API_SECRET environment variables.");
+    console.log("Please set DN_CASH_API_KEY and DN_CASH_API_SECRET environment variables.");
     process.exit(1);
 }
 
 let ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
-
-if(config.IS_TEST_MODE)
-    test.init();
 
 ws.onopen = () => {
     console.log("CMD V4 WebSocket OPEN");
@@ -49,9 +49,9 @@ cashApi.createTrigger(99999999999).then(res => {
         console.log("Received token: " + message.toString() + "\n");
         let msg = JSON.parse(message.toString());
         dispenseMoney(msg.token).then(dispenseResponse => {
-            if(!dispenseResponse) {
+            if(dispenseResponse.failed) {
                 //something went wrong, update token!
-                cashApi.confirmToken(msg.token.uuid, createTokenResponse("FAILED",0)).then(token => console.log("failed token: " + JSON.stringify(token)));
+                cashApi.confirmToken(msg.token.uuid, createTokenResponse(dispenseResponse.type,0,dispenseResponse.message)).then(token => console.log("failed token: " + JSON.stringify(token)));
             } else {
                 //waiting for CMD V4 dispense Event response
                 waitForDispenseEvent().then(message => {
@@ -59,11 +59,11 @@ cashApi.createTrigger(99999999999).then(res => {
                     if(event.eventType === "dispense") {
                         if(event.timeout && !event.notesTaken) {
                             sendRetract().then(() => {
-                                cashApi.confirmToken(msg.token.uuid, createTokenResponse("RETRACTED",0)).then(token => console.log("retracted token: " + JSON.stringify(token)));
+                                cashApi.confirmToken(msg.token.uuid, createTokenResponse("RETRACTED",0,"Notes have not been taken. Retract was executed.")).then(token => console.log("retracted token: " + JSON.stringify(token)));
                             });
                         } else if(!event.timeout && event.notesTaken) {
                             getCassetteData().then(cassetteData => {
-                                cashApi.confirmToken(msg.token.uuid, createTokenResponse("COMPLETED", calculateCashoutAmount(cassetteData, dispenseResponse))).then(token => console.log("confirmed token: " + JSON.stringify(token)));
+                                cashApi.confirmToken(msg.token.uuid, createTokenResponse("COMPLETED", calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)));
                             });
                         }
                     }
@@ -76,33 +76,36 @@ cashApi.createTrigger(99999999999).then(res => {
                 
         }).catch(err => {
             console.log(err);
+            cashApi.confirmToken(msg.token.uuid, createTokenResponse("FAILED",0,"Something went wrong while dispensing notes.")).then(token => console.log("failed token: " + JSON.stringify(token)));
         });
     });
     c.on('error', err => {
         console.log("MQTT not ready: " + err);
+        process.exit(1);
     });
 })
 
 function dispenseMoney(token: any) : Promise<any> {
     //call CMDV4 API and get Cassette Info
     return getCassetteData().then(cassetteData => {
-        if(cassetteData) {
+        if(cassetteData && !cassetteData.failed) {
             let denomResponse = util.findPerfectCashoutDenomination(cassetteData, token);
 
             if(denomResponse.foundDenom)
                 //call CMDV4 API to dispense notes
                 return dispense(denomResponse.cashoutRequest);
-        }
-
-        return Promise.resolve(false);
+            else
+                return Promise.resolve(buildApiErrorResponse("No suitable denomination found!", "REJECTED"));
+        } else return cassetteData
     });
 }
 
-function createTokenResponse(tokenState: string, amount: Number): any {
+function createTokenResponse(tokenState: string, amount: Number, info: string): any {
     return {
         amount: amount,
         state: tokenState,
-        lockrefname: "CMD V4 API"
+        lockrefname: "CMD V4 API",
+        processing_info: info
     }
 }
 
@@ -125,20 +128,50 @@ function calculateCashoutAmount(cassetteData: any, dispenseResponse: any): any {
 
 function getCassetteData() : Promise<any> {
     //call CMDV4 API and get Cassette Info
-    return fetch.default(config.CMD_V4_API_URL+"cassettes", { headers: {"Content-Type": "application/json"}, method: "GET"}).then(res => {
-            if(res.ok) return util.parseCassetteData(res.json());
-            else return Promise.resolve(false);
-        });
+    return fetch.default(config.CMD_V4_API_URL+"cassettes", {headers: {"Content-Type": "application/json"}, method: "GET"}).then(cmdV4ApiResponse => {
+        if(!cmdV4ApiResponse.ok) {
+            return Promise.resolve(buildFromCmdV4ErrorResponse(cmdV4ApiResponse));
+        } 
+        else {
+            return cmdV4ApiResponse.json().then(cassetteData => util.parseCassetteData(cassetteData));
+        }
+    });
 }
 
 function dispense(cashoutRequest: any) : Promise<any> {
-    return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(res => {
-                if(!res.ok) return Promise.resolve(false);
-                else return res.json();
-            });
+    return fetch.default(config.CMD_V4_API_URL+"dispense",{ headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(cmdV4ApiResponse => {
+        if(!cmdV4ApiResponse.ok) return Promise.resolve(buildFromCmdV4ErrorResponse(cmdV4ApiResponse));
+        else return cmdV4ApiResponse.json();
+    });
 }
 
 function sendRetract() {
     console.log("sending retract...");
-    return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify({"retractWithTray": true})}).then(res => res.json());
+    return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify({"retractWithTray": true})}).then(cmdV4ApiResponse => {
+        if(!cmdV4ApiResponse.ok) return Promise.resolve(buildFromCmdV4ErrorResponse(cmdV4ApiResponse));
+        else return cmdV4ApiResponse.json();
+    });
+}
+
+function buildFromCmdV4ErrorResponse(cmdV4ApiResponse: any) {
+    if(cmdV4ApiResponse.status == 500) {
+        return cmdV4ApiResponse.json().then(apiErrorResponse => {
+            if(apiErrorResponse.errors && apiErrorResponse.errors.length > 0) {
+                return buildApiErrorResponse(apiErrorResponse.errors[0].msg);
+            } else
+                return buildApiErrorResponse();
+        });
+    } else {
+        return buildApiErrorResponse();
+    }
+}
+
+function buildApiErrorResponse(message?: string, type?: string): any {
+    let errorResponse = {
+        failed: true,
+        type: type || "FAILED",
+        message: message || "Something went wrong while trying to dispense money."
+    }
+
+    return errorResponse;
 }

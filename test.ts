@@ -1,8 +1,10 @@
 import * as WebSocket from 'ws';
 import * as config from './config';
+
 let wss;
 
 export function init() {
+    //INTIALIZE LOCAL WEBSOCKET SERVER
     wss = new WebSocket.Server({
         port: 8899,
         perMessageDeflate: {
@@ -35,7 +37,7 @@ function dispenseOk() {
 }
 
 export function sendTestResponse() {
-    console.log("send ok dispense");
+    console.log("send dispense event");
     if(config.IS_OK_DISPENSE)
         dispenseOk();
     else
