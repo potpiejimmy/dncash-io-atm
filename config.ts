@@ -12,6 +12,6 @@ export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "https://1bba0bcb-ea
 //CMD V4 EVENT API URL
 export const CMD_V4_API_EVENT_URL = process.env.CMD_V4_API_EVENT_URL || "ws://localhost:8899/cmdv4/v1/events";
 //PARAMETER FOR TESTMODE
-export const IS_TEST_MODE = process.env.IS_TEST_MODE || true;
+export const IS_TEST_MODE = process.env.IS_TEST_MODE || false;
 //TAKES ONLY EFFECT WHEN TESTING MODE IS ENABLED
 export const IS_OK_DISPENSE = process.env.IS_OK_DISPENSE || true;

@@ -26,18 +26,6 @@ ws.onclose = m => {
     console.log("CMD V4 WebSocket CLOSE: " + m.reason);
 };
 
-function waitForDispenseEvent() : Promise<any> {
-    return new Promise(function(resolve, reject) {
-        ws.onmessage = m => {
-            resolve(m.data);
-        };
-
-        ws.onerror = m => {
-            reject("CMD V4 WebSocket ERR: " + m.message);
-        };
-    });
-}
-
 cashApi.createTrigger(99999999999).then(res => {
     console.log(JSON.stringify(res));
     let c = mqtt.connect(config.DN_MQTT_URL);
@@ -48,10 +36,10 @@ cashApi.createTrigger(99999999999).then(res => {
     c.on('message', (topic, message) => {
         console.log("Received token: " + message.toString() + "\n");
         let msg = JSON.parse(message.toString());
-        dispenseMoney(msg.token).then(dispenseResponse => {
+        return dispenseMoney(msg.token).then(dispenseResponse => {
             if(dispenseResponse.failed) {
                 //something went wrong, update token!
-                cashApi.confirmToken(msg.token.uuid, createTokenResponse(dispenseResponse.type,0,dispenseResponse.message)).then(token => console.log("failed token: " + JSON.stringify(token)));
+                return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse(dispenseResponse.type,0,dispenseResponse.message)).then(token => console.log("failed token: " + JSON.stringify(token)));
             } else {
                 //waiting for CMD V4 dispense Event response
                 waitForDispenseEvent().then(message => {
@@ -59,11 +47,11 @@ cashApi.createTrigger(99999999999).then(res => {
                     if(event.eventType === "dispense") {
                         if(event.timeout && !event.notesTaken) {
                             sendRetract().then(() => {
-                                cashApi.confirmToken(msg.token.uuid, createTokenResponse("RETRACTED",0,"Notes have not been taken. Retract was executed.")).then(token => console.log("retracted token: " + JSON.stringify(token)));
+                                return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("RETRACTED",0,"Notes have not been taken. Retract was executed.")).then(token => console.log("retracted token: " + JSON.stringify(token)));
                             });
                         } else if(!event.timeout && event.notesTaken) {
                             getCassetteData().then(cassetteData => {
-                                cashApi.confirmToken(msg.token.uuid, createTokenResponse("COMPLETED", calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)));
+                                return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("COMPLETED", calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)));
                             });
                         }
                     }
@@ -76,7 +64,7 @@ cashApi.createTrigger(99999999999).then(res => {
                 
         }).catch(err => {
             console.log(err);
-            cashApi.confirmToken(msg.token.uuid, createTokenResponse("FAILED",0,"Something went wrong while dispensing notes.")).then(token => console.log("failed token: " + JSON.stringify(token)));
+            return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("FAILED",0,"Something went wrong while dispensing notes.")).then(token => console.log("failed token: " + JSON.stringify(token)));
         });
     });
     c.on('error', err => {
@@ -85,7 +73,19 @@ cashApi.createTrigger(99999999999).then(res => {
     });
 })
 
-function dispenseMoney(token: any) : Promise<any> {
+function waitForDispenseEvent(): Promise<any> {
+    return new Promise(function(resolve, reject) {
+        ws.onmessage = m => {
+            resolve(m.data);
+        };
+
+        ws.onerror = m => {
+            reject("CMD V4 WebSocket ERR: " + m.message);
+        };
+    });
+}
+
+function dispenseMoney(token: any): Promise<any> {
     //call CMDV4 API and get Cassette Info
     return getCassetteData().then(cassetteData => {
         if(cassetteData && !cassetteData.failed) {
@@ -100,60 +100,34 @@ function dispenseMoney(token: any) : Promise<any> {
     });
 }
 
-function createTokenResponse(tokenState: string, amount: Number, info: string): any {
-    return {
-        amount: amount,
-        state: tokenState,
-        lockrefname: "CMD V4 API",
-        processing_info: info
-    }
-}
-
-function calculateCashoutAmount(cassetteData: any, dispenseResponse: any): any {
-    let cashoutAmount = 0;
-    for(var key in cassetteData) {
-        let cassette = cassetteData[key];
-        for(var dispenseKey in dispenseResponse) {
-            if(dispenseKey.endsWith("dispenseCount")) {
-                if(dispenseKey.substring(0,1) === key) {
-                    cashoutAmount += cassette.denomination * dispenseResponse[dispenseKey];
-                    delete dispenseResponse[dispenseKey];
-                }
-            }
-        }
-    }
-
-    return cashoutAmount;
-}
-
-function getCassetteData() : Promise<any> {
+function getCassetteData(): Promise<any> {
     //call CMDV4 API and get Cassette Info
     return fetch.default(config.CMD_V4_API_URL+"cassettes", {headers: {"Content-Type": "application/json"}, method: "GET"}).then(cmdV4ApiResponse => {
         if(!cmdV4ApiResponse.ok) {
-            return Promise.resolve(buildFromCmdV4ErrorResponse(cmdV4ApiResponse));
+            return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
         } 
         else {
-            return cmdV4ApiResponse.json().then(cassetteData => util.parseCassetteData(cassetteData));
+            return cmdV4ApiResponse.json().then(cassetteData => Promise.resolve(util.parseCassetteData(cassetteData)));
         }
     });
 }
 
-function dispense(cashoutRequest: any) : Promise<any> {
+function dispense(cashoutRequest: any): Promise<any> {
     return fetch.default(config.CMD_V4_API_URL+"dispense",{ headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(cmdV4ApiResponse => {
-        if(!cmdV4ApiResponse.ok) return Promise.resolve(buildFromCmdV4ErrorResponse(cmdV4ApiResponse));
+        if(!cmdV4ApiResponse.ok) return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
         else return cmdV4ApiResponse.json();
     });
 }
 
-function sendRetract() {
+function sendRetract(): Promise<any> {
     console.log("sending retract...");
     return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify({"retractWithTray": true})}).then(cmdV4ApiResponse => {
-        if(!cmdV4ApiResponse.ok) return Promise.resolve(buildFromCmdV4ErrorResponse(cmdV4ApiResponse));
+        if(!cmdV4ApiResponse.ok) return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
         else return cmdV4ApiResponse.json();
     });
 }
 
-function buildFromCmdV4ErrorResponse(cmdV4ApiResponse: any) {
+function buildErrorResponseFromCmdV4(cmdV4ApiResponse: any) {
     if(cmdV4ApiResponse.status == 500) {
         return cmdV4ApiResponse.json().then(apiErrorResponse => {
             if(apiErrorResponse.errors && apiErrorResponse.errors.length > 0) {
@@ -174,4 +148,30 @@ function buildApiErrorResponse(message?: string, type?: string): any {
     }
 
     return errorResponse;
+}
+
+function calculateCashoutAmount(cassetteData: any, dispenseResponse: any): any {
+    let cashoutAmount = 0;
+    for(var key in cassetteData) {
+        let cassette = cassetteData[key];
+        for(var dispenseKey in dispenseResponse) {
+            if(dispenseKey.endsWith("dispenseCount")) {
+                if(dispenseKey.substring(0,1) === key) {
+                    cashoutAmount += cassette.denomination * dispenseResponse[dispenseKey];
+                    delete dispenseResponse[dispenseKey];
+                }
+            }
+        }
+    }
+
+    return cashoutAmount;
+}
+
+function createTokenUpdateResponse(tokenState: string, amount: Number, info: string): any {
+    return {
+        amount: amount,
+        state: tokenState,
+        lockrefname: "CMD V4 API",
+        processing_info: info
+    }
 }
