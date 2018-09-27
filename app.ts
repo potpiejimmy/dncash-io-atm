@@ -17,61 +17,78 @@ if (!config.DN_CASH_API_KEY || !config.DN_CASH_API_SECRET) {
 }
 
 let ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
+ws.onopen = () => console.log("CMD V4 WebSocket OPEN");
+ws.onclose = m => console.log("CMD V4 WebSocket CLOSE: " + m.reason);
 
-ws.onopen = () => {
-    console.log("CMD V4 WebSocket OPEN");
-};
+let c: mqtt.Client;
 
-ws.onclose = m => {
-    console.log("CMD V4 WebSocket CLOSE: " + m.reason);
-};
+initMQTT();
 
-cashApi.createTrigger(99999999999).then(res => {
-    console.log(JSON.stringify(res));
-    let c = mqtt.connect(config.DN_MQTT_URL);
+function initMQTT() {
+    c = mqtt.connect(config.DN_MQTT_URL, {resubscribe: true});
     c.on('connect', () => {
-        console.log("MQTT connected");
-        c.subscribe('dncash-io/trigger/' + res.triggercode);
+        console.log("MQTT connected")
+        createTrigger();
     });
-    c.on('message', (topic, message) => {
-        console.log("Received token: " + message.toString() + "\n");
-        let msg = JSON.parse(message.toString());
-        return dispenseMoney(msg.token).then(dispenseResponse => {
-            if(dispenseResponse.failed) {
-                //something went wrong, update token!
-                return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse(dispenseResponse.type,0,dispenseResponse.message)).then(token => console.log("failed token: " + JSON.stringify(token)));
-            } else {
-                //waiting for CMD V4 dispense Event response
-                waitForDispenseEvent().then(message => {
-                    let event = JSON.parse(message.toString());
-                    if(event.eventType === "dispense") {
-                        if(event.timeout && !event.notesTaken) {
-                            sendRetract().then(() => {
-                                return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("RETRACTED",0,"Notes have not been taken. Retract was executed.")).then(token => console.log("retracted token: " + JSON.stringify(token)));
-                            });
-                        } else if(!event.timeout && event.notesTaken) {
-                            getCassetteData().then(cassetteData => {
-                                return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("COMPLETED", calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)));
-                            });
-                        }
-                    }
-                });
-            }
 
-            //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET
-            if(config.IS_TEST_MODE)
-                test.sendTestResponse()
-                
-        }).catch(err => {
-            console.log(err);
-            return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("FAILED",0,"Something went wrong while dispensing notes.")).then(token => console.log("failed token: " + JSON.stringify(token)));
-        });
+    c.on('message', (topic, message) => {
+        handleMessage(topic, message);
     });
+
+    c.on('close', () => {
+        console.log("MQTT closed.");
+    });
+
     c.on('error', err => {
         console.log("MQTT not ready: " + err);
         process.exit(1);
     });
-})
+}
+
+function createTrigger() {
+    cashApi.createTrigger(99999999999).then(res => {
+        console.log(JSON.stringify(res));
+        c.unsubscribe("dncash-io/trigger/+");
+        c.subscribe('dncash-io/trigger/' + res.triggercode);        
+    });
+}
+
+function handleMessage(topic, message) {
+    console.log("Received token: " + message.toString() + "\n");
+    let msg = JSON.parse(message.toString());
+    return dispenseMoney(msg.token).then(dispenseResponse => {
+        if(!dispenseResponse) {
+            return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("FAILED",0,"Something went wrong while dispensing notes.")).then(token => console.log("failed token: " + JSON.stringify(token)));
+        }
+        else if(dispenseResponse.failed) {
+            //something went wrong, update token!
+            return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse(dispenseResponse.type,0,dispenseResponse.message)).then(token => console.log("failed token: " + JSON.stringify(token)));
+        } else {
+            //waiting for CMD V4 dispense Event response
+            return waitForDispenseEvent().then(message => {
+                let event = JSON.parse(message.toString());
+                if(event.eventType === "dispense") {
+                    if(event.timeout && !event.notesTaken) {
+                        return sendRetract().then(() => {
+                            return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("RETRACTED",0,"Notes were not taken. Retract was executed.")).then(token => console.log("retracted token: " + JSON.stringify(token)));
+                        });
+                    } else if(!event.timeout && event.notesTaken) {
+                        return getCassetteData().then(cassetteData => {
+                            return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("COMPLETED", calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)));
+                        });
+                    }
+                }
+            });
+        }                    
+    }).catch(err => {
+        console.log(err);
+        return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("FAILED",0,JSON.stringify(err))).then(token => console.log("failed token: " + JSON.stringify(token)));
+    }).then(() => {
+        //we are finished -> open new MQTT with new trigger code
+        c.unsubscribe(topic);
+        createTrigger();
+    });
+}
 
 function waitForDispenseEvent(): Promise<any> {
     return new Promise(function(resolve, reject) {
@@ -82,6 +99,11 @@ function waitForDispenseEvent(): Promise<any> {
         ws.onerror = m => {
             reject("CMD V4 WebSocket ERR: " + m.message);
         };
+
+        if(config.IS_TEST_MODE) {
+            //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET WITH 5s DELAY
+            setTimeout(test.sendTestResponse, 5000);
+        }
     });
 }
 
@@ -96,7 +118,7 @@ function dispenseMoney(token: any): Promise<any> {
                 return dispense(denomResponse.cashoutRequest);
             else
                 return Promise.resolve(buildApiErrorResponse("No suitable denomination found!", "REJECTED"));
-        } else return cassetteData
+        } else return Promise.resolve(buildApiErrorResponse("Error while getting cassette data!", "FAILED"));
     });
 }
 
@@ -113,7 +135,7 @@ function getCassetteData(): Promise<any> {
 }
 
 function dispense(cashoutRequest: any): Promise<any> {
-    return fetch.default(config.CMD_V4_API_URL+"dispense",{ headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(cmdV4ApiResponse => {
+    return fetch.default(config.CMD_V4_API_URL+"dispense500",{ headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(cmdV4ApiResponse => {
         if(!cmdV4ApiResponse.ok) return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
         else return cmdV4ApiResponse.json();
     });

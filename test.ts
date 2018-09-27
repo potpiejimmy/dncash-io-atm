@@ -6,7 +6,7 @@ let wss;
 export function init() {
     //INTIALIZE LOCAL WEBSOCKET SERVER
     wss = new WebSocket.Server({
-        port: 8899,
+        port: 5000,
         perMessageDeflate: {
           zlibDeflateOptions: { // See zlib defaults.
             chunkSize: 1024,
