@@ -25,7 +25,7 @@ let c: mqtt.Client;
 initMQTT();
 
 function initMQTT() {
-    c = mqtt.connect(config.DN_MQTT_URL, {resubscribe: true});
+    c = mqtt.connect(config.DN_MQTT_URL);
     c.on('connect', () => {
         console.log("MQTT connected")
         createTrigger();
@@ -135,7 +135,7 @@ function getCassetteData(): Promise<any> {
 }
 
 function dispense(cashoutRequest: any): Promise<any> {
-    return fetch.default(config.CMD_V4_API_URL+"dispense500",{ headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(cmdV4ApiResponse => {
+    return fetch.default(config.CMD_V4_API_URL+"dispense",{ headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(cmdV4ApiResponse => {
         if(!cmdV4ApiResponse.ok) return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
         else return cmdV4ApiResponse.json();
     });
