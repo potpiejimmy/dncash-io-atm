@@ -3,7 +3,7 @@ export function parseCassetteData(cassetteApiInfo: any): any {
     for(var key in cassetteApiInfo) {
         if(cassetteApiInfo.hasOwnProperty(key)) {
             let id = Number.parseInt(key.substring(0,1));
-            if(id > 0) {
+            if(id > 0 && cassetteApiInfo[id+"STA"] && cassetteApiInfo[id+"STA"]==="R") {
                 if(!cassettes[id])
                     cassettes[id] = {};
 

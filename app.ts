@@ -155,10 +155,10 @@ function buildErrorResponseFromCmdV4(cmdV4ApiResponse: any) {
             if(apiErrorResponse.errors && apiErrorResponse.errors.length > 0) {
                 return buildApiErrorResponse(apiErrorResponse.errors[0].msg);
             } else
-                return buildApiErrorResponse();
+                return buildApiErrorResponse("Getting status " + cmdV4ApiResponse.status);
         });
     } else {
-        return buildApiErrorResponse();
+        return buildApiErrorResponse("Getting http status " + cmdV4ApiResponse.status);
     }
 }
 
@@ -174,18 +174,10 @@ function buildApiErrorResponse(message?: string, type?: string): any {
 
 function calculateCashoutAmount(cassetteData: any, dispenseResponse: any): any {
     let cashoutAmount = 0;
-    for(var key in cassetteData) {
-        let cassette = cassetteData[key];
-        for(var dispenseKey in dispenseResponse) {
-            if(dispenseKey.endsWith("dispenseCount")) {
-                if(dispenseKey.substring(0,1) === key) {
-                    cashoutAmount += cassette.denomination * dispenseResponse[dispenseKey];
-                    delete dispenseResponse[dispenseKey];
-                }
-            }
-        }
-    }
-
+    Object.keys(dispenseResponse).forEach(key => {
+        if(key.endsWith("dispenseCount"))
+            cashoutAmount += cassetteData[key.substring(0,1)].denomination * dispenseResponse[key];
+    });
     return cashoutAmount;
 }
 
