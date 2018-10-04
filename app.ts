@@ -118,34 +118,37 @@ function dispenseMoney(token: any): Promise<any> {
                 return dispense(denomResponse.cashoutRequest);
             else
                 return Promise.resolve(buildApiErrorResponse("No suitable denomination found!", "REJECTED"));
-        } else return Promise.resolve(buildApiErrorResponse("Error while getting cassette data!", "FAILED"));
+        } else
+            return Promise.resolve(buildApiErrorResponse("Error while getting cassette data!", "FAILED"));
     });
 }
 
 function getCassetteData(): Promise<any> {
     //call CMDV4 API and get Cassette Info
     return fetch.default(config.CMD_V4_API_URL+"cassettes", {headers: {"Content-Type": "application/json"}, method: "GET"}).then(cmdV4ApiResponse => {
-        if(!cmdV4ApiResponse.ok) {
+        if(!cmdV4ApiResponse.ok)
             return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
-        } 
-        else {
+        else
             return cmdV4ApiResponse.json().then(cassetteData => Promise.resolve(util.parseCassetteData(cassetteData)));
-        }
     });
 }
 
 function dispense(cashoutRequest: any): Promise<any> {
     return fetch.default(config.CMD_V4_API_URL+"dispense",{ headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(cmdV4ApiResponse => {
-        if(!cmdV4ApiResponse.ok) return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
-        else return cmdV4ApiResponse.json();
+        if(!cmdV4ApiResponse.ok)
+            return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
+        else
+            return cmdV4ApiResponse.json();
     });
 }
 
 function sendRetract(): Promise<any> {
     console.log("sending retract...");
     return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify({"retractWithTray": true})}).then(cmdV4ApiResponse => {
-        if(!cmdV4ApiResponse.ok) return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
-        else return cmdV4ApiResponse.json();
+        if(!cmdV4ApiResponse.ok)
+            return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
+        else
+            return cmdV4ApiResponse.json();
     });
 }
 
