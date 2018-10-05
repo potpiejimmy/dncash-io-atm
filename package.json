@@ -1,6 +1,6 @@
 {
   "name": "dncash-io-atm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Node.js server to connect dncashio API with CMDV4 API",
   "main": "app.ts",
   "scripts": {
