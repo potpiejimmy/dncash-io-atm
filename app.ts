@@ -64,6 +64,7 @@ function handleMessage(topic, message) {
             //something went wrong, update token!
             return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse(dispenseResponse.type,0,dispenseResponse.message)).then(token => console.log("failed token: " + JSON.stringify(token)));
         } else {
+            console.log("dispense triggered ... waiting for dispense event\n");
             //waiting for CMD V4 dispense Event response
             return waitForDispenseEvent().then(message => {
                 let event = JSON.parse(message.toString());
@@ -73,7 +74,7 @@ function handleMessage(topic, message) {
                             return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("RETRACTED",0,"Notes were not taken. Retract was executed.")).then(token => console.log("retracted token: " + JSON.stringify(token)));
                         });
                     } else if(!event.timeout && event.notesTaken) {
-                        return getCassetteData().then(cassetteData => {
+                        return getCassetteData(true).then(cassetteData => {
                             return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("COMPLETED", calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)));
                         });
                     }
@@ -93,7 +94,8 @@ function handleMessage(topic, message) {
 function waitForDispenseEvent(): Promise<any> {
     return new Promise(function(resolve, reject) {
         ws.onmessage = m => {
-            resolve(m.data);
+            if(JSON.parse(m.data.toString()).eventType === "dispense")
+                resolve(m.data);
         };
 
         ws.onerror = m => {
@@ -109,13 +111,17 @@ function waitForDispenseEvent(): Promise<any> {
 
 function dispenseMoney(token: any): Promise<any> {
     //call CMDV4 API and get Cassette Info
-    return getCassetteData().then(cassetteData => {
+    return getCassetteData(false).then(cassetteData => {
         if(cassetteData && !cassetteData.failed) {
+            console.log("parsed cassette data: " + JSON.stringify(cassetteData) + "\n");
+
             let denomResponse = util.findPerfectCashoutDenomination(cassetteData, token);
+
+            console.log("calculated denomination: " + JSON.stringify(denomResponse) + "\n");
 
             if(denomResponse.foundDenom)
                 //call CMDV4 API to dispense notes
-                return dispense(denomResponse.cashoutRequest);
+                return dispense(denomResponse.cashoutDenom);
             else
                 return Promise.resolve(buildApiErrorResponse("No suitable denomination found!", "REJECTED"));
         } else
@@ -123,22 +129,30 @@ function dispenseMoney(token: any): Promise<any> {
     });
 }
 
-function getCassetteData(): Promise<any> {
+function getCassetteData(ignoreCassetteDefect: boolean): Promise<any> {
     //call CMDV4 API and get Cassette Info
     return fetch.default(config.CMD_V4_API_URL+"cassettes", {headers: {"Content-Type": "application/json"}, method: "GET"}).then(cmdV4ApiResponse => {
         if(!cmdV4ApiResponse.ok)
             return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
         else
-            return cmdV4ApiResponse.json().then(cassetteData => Promise.resolve(util.parseCassetteData(cassetteData)));
+            return cmdV4ApiResponse.json().then(cassetteData => {
+                console.log("cassette data CMDV4 api response: " + JSON.stringify(cassetteData) + "\n");
+                return Promise.resolve(util.parseCassetteData(cassetteData, ignoreCassetteDefect));
+            });
     });
 }
 
 function dispense(cashoutRequest: any): Promise<any> {
+    console.log("sending CMDV4 dispense command with: " + JSON.stringify(cashoutRequest) + "\n"); 
     return fetch.default(config.CMD_V4_API_URL+"dispense",{ headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(cmdV4ApiResponse => {
         if(!cmdV4ApiResponse.ok)
             return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
-        else
-            return cmdV4ApiResponse.json();
+        else {
+            return cmdV4ApiResponse.json().then(response => {
+                console.log("dispense CMDv4 response: " + JSON.stringify(response) + "\n");
+                return Promise.resolve(response);
+            });
+        }
     });
 }
 
@@ -147,8 +161,12 @@ function sendRetract(): Promise<any> {
     return fetch.default(config.CMD_V4_API_URL+"dispense", { headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify({"retractWithTray": true})}).then(cmdV4ApiResponse => {
         if(!cmdV4ApiResponse.ok)
             return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));
-        else
-            return cmdV4ApiResponse.json();
+        else {
+            return cmdV4ApiResponse.json().then(response => {
+                console.log("retract CMDv4 response: " + JSON.stringify(response) + "\n");
+                return Promise.resolve(response);
+            });
+        }
     });
 }
 
@@ -176,11 +194,15 @@ function buildApiErrorResponse(message?: string, type?: string): any {
 }
 
 function calculateCashoutAmount(cassetteData: any, dispenseResponse: any): any {
+    console.log("Cassette data for amount calc: " + JSON.stringify(cassetteData) + "\n");
     let cashoutAmount = 0;
     Object.keys(dispenseResponse).forEach(key => {
-        if(key.endsWith("dispenseCount"))
+        if(key.endsWith("dispenseCount") && cassetteData[key.substring(0,1)]) {
             cashoutAmount += cassetteData[key.substring(0,1)].denomination * dispenseResponse[key];
+        }
     });
+
+    console.log("cashout amount: " + cashoutAmount);
     return cashoutAmount;
 }
 

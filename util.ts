@@ -1,9 +1,9 @@
-export function parseCassetteData(cassetteApiInfo: any): any {
+export function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean): any {
     let cassettes = {};
     for(var key in cassetteApiInfo) {
         if(cassetteApiInfo.hasOwnProperty(key)) {
             let id = Number.parseInt(key.substring(0,1));
-            if(id > 0 && cassetteApiInfo[id+"STA"] && cassetteApiInfo[id+"STA"]==="R") {
+            if(id > 0 && (ignoreCassetteDefect || (cassetteApiInfo[id+"STA"] && cassetteApiInfo[id+"STA"]==="R"))) {
                 if(!cassettes[id])
                     cassettes[id] = {};
 
