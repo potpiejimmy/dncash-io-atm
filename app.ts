@@ -16,10 +16,7 @@ if (!config.DN_CASH_API_KEY || !config.DN_CASH_API_SECRET) {
     process.exit(1);
 }
 
-let ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
-ws.onopen = () => console.log("CMD V4 WebSocket OPEN");
-ws.onclose = m => console.log("CMD V4 WebSocket CLOSE: " + m.reason);
-
+let ws: WebSocket;
 let c: mqtt.Client;
 
 initMQTT();
@@ -68,6 +65,7 @@ function handleMessage(topic, message) {
             //waiting for CMD V4 dispense Event response
             return waitForDispenseEvent().then(message => {
                 let event = JSON.parse(message.toString());
+                if(ws) ws.close();
                 if(event.eventType === "dispense") {
                     if(event.timeout && !event.notesTaken) {
                         return sendRetract().then(() => {
@@ -82,17 +80,24 @@ function handleMessage(topic, message) {
             });
         }                    
     }).catch(err => {
+        if(ws) ws.close();
         console.log(err);
         return cashApi.confirmToken(msg.token.uuid, createTokenUpdateResponse("FAILED",0,JSON.stringify(err))).then(token => console.log("failed token: " + JSON.stringify(token)));
     }).then(() => {
-        //we are finished -> open new MQTT with new trigger code
+        //we are finished -> close Websocket, unsubsribe from topic and open new MQTT with new trigger code
+        if(ws) ws.close();
         c.unsubscribe(topic);
         createTrigger();
     });
 }
 
 function waitForDispenseEvent(): Promise<any> {
+    ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
     return new Promise(function(resolve, reject) {
+        ws.onopen = () => console.log("CMD V4 WebSocket OPEN");
+
+        ws.onclose = m => console.log("CMD V4 WebSocket CLOSE: " + m.reason);
+
         ws.onmessage = m => {
             if(JSON.parse(m.data.toString()).eventType === "dispense")
                 resolve(m.data);
@@ -143,7 +148,7 @@ function getCassetteData(ignoreCassetteDefect: boolean): Promise<any> {
 }
 
 function dispense(cashoutRequest: any): Promise<any> {
-    console.log("sending CMDV4 dispense command with: " + JSON.stringify(cashoutRequest) + "\n"); 
+    console.log("sending CMDV4 dispense command with: " + JSON.stringify(cashoutRequest) + "\n");
     return fetch.default(config.CMD_V4_API_URL+"dispense",{ headers: {"Content-Type": "application/json"}, method: "POST", body: JSON.stringify(cashoutRequest)}).then(cmdV4ApiResponse => {
         if(!cmdV4ApiResponse.ok)
             return Promise.resolve(buildErrorResponseFromCmdV4(cmdV4ApiResponse));

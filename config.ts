@@ -8,9 +8,9 @@ export const DN_MQTT_URL = process.env.DN_MQTT_URL || 'wss://test.mosquitto.org:
 //DEVICE_ID FOR THIS ATM
 export const DN_DEVICE_ID = process.env.DN_DEVICE_ID || '31df1ac3-3006-4bbf-826f-4060195437e9';
 //CMD V4 API URL
-export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "http://localhost:5000/cmdv4/v1/";
+export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "http://localhost:80/cmdv4/v1/";
 //CMD V4 EVENT API URL
-export const CMD_V4_API_EVENT_URL = process.env.CMD_V4_API_EVENT_URL || "ws://localhost:5000/cmdv4/v1/events";
+export const CMD_V4_API_EVENT_URL = process.env.CMD_V4_API_EVENT_URL || "ws://localhost:80/cmdv4/v1/events";
 
 /*
 ####### TESTING PARAMETERS - DEV ONLY #######
