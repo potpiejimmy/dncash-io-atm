@@ -1,3 +1,6 @@
+import * as config from './config';
+import * as HttpsProxyAgent from 'https-proxy-agent';
+
 export function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean): any {
     let cassettes = {};
     for(var key in cassetteApiInfo) {
@@ -75,4 +78,12 @@ export function findPerfectCashoutDenomination(availableCassettes: any, token: a
     }
 
     return {foundDenom: foundDenom, cashoutDenom: cashoutDenom};
+}
+
+export function getAgent(): any {
+    return config.USE_PROXY ? new HttpsProxyAgent(config.PROXY_URL): null;
+}
+
+export function getJsonHeader(): any {
+    return {"Content-Type": "application/json"};
 }
