@@ -17,7 +17,7 @@ export async function dispenseMoney(token: any): Promise<any> {
             //call CMDV4 API to dispense notes
             return dispense(denomResponse.cashoutDenom);
         else
-            return responseHelper.buildApiErrorResponse("No suitable denomination found!", "REJECTED");
+            return responseHelper.buildApiErrorResponse("No suitable denomination found!", util.TOKEN_STATES.REJECTED);
     } else
         return cassetteData;
 }

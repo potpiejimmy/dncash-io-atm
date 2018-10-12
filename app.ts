@@ -88,10 +88,10 @@ function handleMessage(topic, message) {
 async function handleToken(token: any): Promise<any> {
     console.log("Received token: " + JSON.stringify(token) + "\n");
 
-    if(util.CASHOUT === token.type)
+    if(util.TOKEN_TYPES.CASHOUT === token.type)
         await processCashoutToken(token);
     else
-        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse("REJECTED",0, token.type + " tokens are not supported yet.")).then(token => console.log("rejected token: " + JSON.stringify(token)+"\n"));
+        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,0, token.type + " tokens are not supported yet.")).then(token => console.log("rejected token: " + JSON.stringify(token)+"\n"));
 
     //we are finished -> close Websocket, unsubsribe from topic and open new MQTT with new trigger code
     if(ws) ws.close();
@@ -103,7 +103,7 @@ async function processCashoutToken(token) {
         let dispenseResponse = await cashout.dispenseMoney(token);
 
         if(!dispenseResponse) {
-            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse("FAILED",0,"Something went wrong while dispensing notes.")).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,0,"Something went wrong while dispensing notes.")).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
         }
         else if(dispenseResponse.failed) {
             //something went wrong, update token!
@@ -117,16 +117,16 @@ async function processCashoutToken(token) {
             if(event.eventType === "dispense") {
                 if(event.timeout && !event.notesTaken) {
                     await cashout.sendRetract();
-                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse("RETRACTED",0,"Notes were not taken. Retract was executed.")).then(token => console.log("retracted token: " + JSON.stringify(token)+"\n"));
+                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,0,"Notes were not taken. Retract was executed.")).then(token => console.log("retracted token: " + JSON.stringify(token)+"\n"));
                 } else if(!event.timeout && event.notesTaken) {
                     let cassetteData = await cassettes.getCassetteData(true);
-                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse("COMPLETED", util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)+"\n"));
+                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)+"\n"));
                 }
             }
         }                 
     } catch(err) {
         console.log(err);
-        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse("FAILED",0,JSON.stringify(err))).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,0,JSON.stringify(err))).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
     }
 }
 

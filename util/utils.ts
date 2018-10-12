@@ -1,8 +1,18 @@
 import * as config from '../config/config';
 import * as HttpsProxyAgent from 'https-proxy-agent';
 
-export const CASHOUT = "CASHOUT"; 
-export const CASHIN = "CASHIN";
+export enum TOKEN_TYPES {
+    CASHOUT = "CASHOUT",
+    CASHIN = "CASHIN",
+}
+
+export enum TOKEN_STATES {
+    FAILED = "FAILED",
+    CANCELED = "CANCELED",
+    REJECTED = "REJECTED",
+    RETRACTED = "RETRACTED",
+    COMPLETED ="COMPLETED"
+}
 
 export function getAgent(): any {
     return config.USE_PROXY ? new HttpsProxyAgent(config.PROXY_URL): null;
