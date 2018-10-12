@@ -91,7 +91,7 @@ async function handleToken(token: any): Promise<any> {
     if(util.CASHOUT === token.type)
         await processCashoutToken(token);
     else
-        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse("FAILED",0, token.type + " tokens are not allowed.")).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse("REJECTED",0, token.type + " tokens are not supported yet.")).then(token => console.log("rejected token: " + JSON.stringify(token)+"\n"));
 
     //we are finished -> close Websocket, unsubsribe from topic and open new MQTT with new trigger code
     if(ws) ws.close();
