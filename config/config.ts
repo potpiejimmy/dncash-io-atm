@@ -16,11 +16,11 @@ export const DN_MQTT_URL = process.env.DN_MQTT_URL || 'wss://mosquitto.dn-sol.ne
 //USE PROXY TO TUNNEL HTTPS REQUESTS
 export const USE_PROXY = process.env.USE_PROXY || true;
 //PROXY URL FOR HTTPS REQUESTS
-export const PROXY_URL = process.env.PROXY_URL || 'http://proxy.wincor-nixdorf.com:81';
+export const PROXY_URL = process.env.PROXY_URL || 'http://proxy.wincor-nixdorf.com:81/';
 //USE NFC TAG
 export const USE_NFC_TAG = process.env.USE_NFC_TAG || false;
 //NFC TAG API URL
-export const NFC_TAG_API_URL = process.env.NFC_TAG_API_URL || "http://localhost:5555";
+export const NFC_TAG_API_URL = process.env.NFC_TAG_API_URL || "http://localhost:5555/";
 
 
 /*
@@ -29,6 +29,6 @@ export const NFC_TAG_API_URL = process.env.NFC_TAG_API_URL || "http://localhost:
 #############################################
 */
 //PARAMETER FOR TESTMODE
-export const IS_TEST_MODE = process.env.IS_TEST_MODE || false;
+export const IS_TEST_MODE = process.env.IS_TEST_MODE || true;
 //TAKES ONLY EFFECT WHEN TESTING MODE IS ENABLED
 export const IS_OK_DISPENSE = process.env.IS_OK_DISPENSE || true;

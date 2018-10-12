@@ -1,5 +1,5 @@
 import * as WebSocket from 'ws';
-import * as config from './config';
+import * as config from '../config/config';
 
 let wss;
 
@@ -37,7 +37,7 @@ function dispenseOk() {
 }
 
 export function sendTestResponse() {
-    console.log("send dispense event");
+    console.log("send test dispense event");
     if(config.IS_OK_DISPENSE)
         dispenseOk();
     else

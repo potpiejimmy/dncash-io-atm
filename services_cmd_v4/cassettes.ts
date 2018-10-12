@@ -1,7 +1,23 @@
-import * as config from './config';
-import * as HttpsProxyAgent from 'https-proxy-agent';
+import * as fetch from 'node-fetch';
+import * as util from '../util/utils';
+import * as config from '../config/config';
+import * as response from '../util/responsebuilder';
 
-export function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean): any {
+export async function getCassetteData(ignoreCassetteDefect: boolean): Promise<any> {
+    console.log("getting cassette data\n");
+    //call CMDV4 API and get Cassette Info
+    let cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"cassettes", { agent: util.getAgent(), headers: util.getJsonHeader(), method: "GET"});
+    
+    if(!cmdV4ApiResponse.ok)
+        return response.buildErrorResponseFromCmdV4(cmdV4ApiResponse);
+    else {
+        let cassetteData = await cmdV4ApiResponse.json();
+        console.log("cassette data CMDV4 api response: " + JSON.stringify(cassetteData) + "\n");
+        return parseCassetteData(cassetteData, ignoreCassetteDefect);
+    }
+}
+
+function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean): any {
     let cassettes = {};
     for(var key in cassetteApiInfo) {
         if(cassetteApiInfo.hasOwnProperty(key)) {
@@ -78,12 +94,4 @@ export function findPerfectCashoutDenomination(availableCassettes: any, token: a
     }
 
     return {foundDenom: foundDenom, cashoutDenom: cashoutDenom};
-}
-
-export function getAgent(): any {
-    return config.USE_PROXY ? new HttpsProxyAgent(config.PROXY_URL): null;
-}
-
-export function getJsonHeader(): any {
-    return {"Content-Type": "application/json"};
 }

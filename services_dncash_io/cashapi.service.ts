@@ -1,7 +1,6 @@
-
 import * as fetch from 'node-fetch';
-import * as config from '../config';
-import * as util from '../util';
+import * as config from '../config/config';
+import * as util from '../util/utils';
 
 
 export function registerDevice(): Promise<any> {
