@@ -59,7 +59,7 @@ async function createTrigger(): Promise<void> {
         if(res.error)
             process.exit(1);
 
-        if(config.USE_NFC_TAG) {
+        if(config.WRITE_NFC_TAG) {
            nfc.writeNfcTag(res.triggercode);
         }
         
@@ -123,7 +123,7 @@ async function processCashoutToken(token) {
                     return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)+"\n"));
                 }
             }
-        }                 
+        }
     } catch(err) {
         console.log(err);
         return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,0,JSON.stringify(err))).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));

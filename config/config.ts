@@ -18,7 +18,7 @@ export const USE_PROXY = process.env.USE_PROXY || true;
 //PROXY URL FOR HTTPS REQUESTS
 export const PROXY_URL = process.env.PROXY_URL || 'http://proxy.wincor-nixdorf.com:81/';
 //USE NFC TAG
-export const USE_NFC_TAG = process.env.USE_NFC_TAG || false;
+export const WRITE_NFC_TAG = process.env.WRITE_NFC_TAG || false;
 //NFC TAG API URL
 export const NFC_TAG_API_URL = process.env.NFC_TAG_API_URL || "http://localhost:5555/";
 
