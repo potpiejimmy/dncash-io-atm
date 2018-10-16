@@ -22,7 +22,7 @@ export function buildApiErrorResponse(message?: string, type?: string): any {
 }
 
 
-export function createTokenUpdateResponse(tokenState: string, amount: Number, info: string): any {
+export function createTokenUpdateResponse(tokenState: string, amount: Number, info: any): any {
     return {
         amount: amount,
         state: tokenState,

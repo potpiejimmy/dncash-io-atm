@@ -21,6 +21,8 @@ export const PROXY_URL = process.env.PROXY_URL || 'http://proxy.wincor-nixdorf.c
 export const WRITE_NFC_TAG = process.env.WRITE_NFC_TAG || true;
 //NFC TAG API URL
 export const NFC_TAG_API_URL = process.env.NFC_TAG_API_URL || "http://localhost:5555/";
+//NFC TAG URL
+export const NFC_TAG_URL = process.env.NFC_TAG_URL || "https://dncashatm.dn-sol.net/dncashdemo.html?triggercode=";
 
 
 /*

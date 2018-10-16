@@ -7,10 +7,10 @@ import * as cashout from './services_cmd_v4/cashout';
 import * as cassettes from './services_cmd_v4/cassettes';
 
 import * as config from './config/config';
-
 import * as resHelper from './util/responsebuilder';
 import * as util from './util/utils';
 import * as test from './test/test';
+
 import * as nfc from './tag_writer/nfc';
 
 console.log("=== The ultimate banking machine API: " + new Date() + " ===\n");
@@ -34,7 +34,7 @@ else
 function initMQTT() {
     c = mqtt.connect(config.DN_MQTT_URL);
     c.on('connect', () => {
-        console.log("MQTT connected")
+        console.log("MQTT connected. Creating trigger...")
         createTrigger();
     });
 
@@ -63,14 +63,14 @@ async function createTrigger(): Promise<void> {
            nfc.writeNfcTag(res.triggercode);
         }
         
-        subscribeForTrigger(res.triggercode);
+        listenForTrigger(res.triggercode);
     } catch(err) {
         console.log(err);
         process.exit(1);
     };
 }
 
-async function subscribeForTrigger(trigger: string): Promise<any> {
+async function listenForTrigger(trigger: string): Promise<any> {
     if(config.USE_MQTT) {
         c.unsubscribe("dncash-io/trigger/+", () => { c.subscribe('dncash-io/trigger/' + trigger)});
     } else {
@@ -91,6 +91,7 @@ async function handleToken(token: any): Promise<any> {
     if(util.TOKEN_TYPES.CASHOUT === token.type)
         await processCashoutToken(token);
     else
+        //await processCashinToken(token);
         await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,0, token.type + " tokens are not supported yet.")).then(token => console.log("rejected token: " + JSON.stringify(token)+"\n"));
 
     //we are finished -> close Websocket, unsubsribe from topic and open new MQTT with new trigger code
@@ -107,7 +108,7 @@ async function processCashoutToken(token) {
         }
         else if(dispenseResponse.failed) {
             //something went wrong, update token!
-            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(dispenseResponse.type,0,dispenseResponse.message)).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(dispenseResponse.type,0,dispenseResponse)).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
         } else {
             console.log("dispense triggered ... waiting for dispense event\n");
             //waiting for CMD V4 dispense Event response
@@ -126,7 +127,7 @@ async function processCashoutToken(token) {
         }
     } catch(err) {
         console.log(err);
-        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,0,JSON.stringify(err))).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,0,err)).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
     }
 }
 
