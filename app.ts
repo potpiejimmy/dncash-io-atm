@@ -74,7 +74,7 @@ async function listenForTrigger(trigger: string): Promise<any> {
     if(config.USE_MQTT) {
         c.unsubscribe("dncash-io/trigger/+", () => { c.subscribe('dncash-io/trigger/' + trigger)});
     } else {
-        return fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
+        return fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
             return handleToken(token);
         }).catch(() => createTrigger());
     }

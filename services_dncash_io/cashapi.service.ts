@@ -26,5 +26,5 @@ export function requestTrigger(triggercode: string): Promise<any> {
 }
 
 function invokeBackend(url: string, method: string, body?: any) : Promise<any> {
-    return fetch.default(url, {agent:util.getAgent(), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: method, body: JSON.stringify(body)}).then(res => res.json());
+    return fetch.default(url, {agent:util.getAgent(url), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: method, body: JSON.stringify(body)}).then(res => res.json());
 }

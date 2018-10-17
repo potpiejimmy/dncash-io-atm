@@ -24,7 +24,7 @@ export async function dispenseMoney(token: any): Promise<any> {
 
 export async function dispense(cashoutRequest: any): Promise<any> {
     console.log("sending CMDV4 dispense command with: " + JSON.stringify(cashoutRequest) + "\n");
-    let cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"dispense",{ agent: util.getAgent(), headers: util.getJsonHeader(), method: "POST", body: JSON.stringify(cashoutRequest)});
+    let cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"dispense",{ agent: util.getAgent(config.CMD_V4_API_URL), headers: util.getJsonHeader(), method: "POST", body: JSON.stringify(cashoutRequest)});
 
     if(!cmdV4ApiResponse.ok)
         return responseHelper.buildErrorResponseFromCmdV4(cmdV4ApiResponse);
@@ -37,7 +37,7 @@ export async function dispense(cashoutRequest: any): Promise<any> {
 
 export async function sendRetract(): Promise<any> {
     console.log("sending retract...\n");
-    let cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"dispense", { agent: util.getAgent(), headers: util.getJsonHeader(), method: "POST", body: JSON.stringify({"retractWithTray": true})});
+    let cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"dispense", { agent: util.getAgent(config.CMD_V4_API_URL), headers: util.getJsonHeader(), method: "POST", body: JSON.stringify({"retractWithTray": true})});
 
     if(!cmdV4ApiResponse.ok)
         return responseHelper.buildErrorResponseFromCmdV4(cmdV4ApiResponse);

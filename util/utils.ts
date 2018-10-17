@@ -14,8 +14,8 @@ export enum TOKEN_STATES {
     COMPLETED ="COMPLETED"
 }
 
-export function getAgent(): any {
-    return config.USE_PROXY ? new HttpsProxyAgent(config.PROXY_URL): null;
+export function getAgent(url: string): any {
+    return (config.USE_PROXY && !url.includes("localhost") && !url.includes("127.0.0.1")) ? new HttpsProxyAgent(config.PROXY_URL): null;
 }
 
 export function getJsonHeader(): any {
