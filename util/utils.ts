@@ -1,5 +1,7 @@
 import * as config from '../config/config';
 import * as HttpsProxyAgent from 'https-proxy-agent';
+import * as storage from 'node-persist';
+import * as cashApi from '../services_dncash_io/cashapi.service';
 
 export enum TOKEN_TYPES {
     CASHOUT = "CASHOUT",
@@ -33,4 +35,21 @@ export function calculateCashoutAmount(cassetteData: any, dispenseResponse: any)
 
     console.log("cashout amount: " + cashoutAmount + "\n");
     return cashoutAmount;
+}
+
+export async function initStorageAndDevice(): Promise<string> {
+    let device_uuid;
+    console.log("init storage");
+    await storage.init({dir:"storage"});
+    console.log("storage initialized");
+    if(!(device_uuid = await storage.getItem("device-uuid"))) {
+        console.log("register new device...")
+        device_uuid = (await cashApi.registerDevice()).uuid;
+        
+        if(device_uuid)
+            await storage.setItem("device-uuid", device_uuid);
+    }
+
+    console.log("device uuid: " + device_uuid);
+    return device_uuid;
 }

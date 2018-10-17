@@ -3,8 +3,6 @@ export const DN_CASH_API_KEY = process.env.DN_CASH_API_KEY || "1n0zv78akj6zzz0qw
 export const DN_CASH_API_SECRET = process.env.DN_CASH_API_SECRET || "xj3jnhjzmj2gkveqw38aeeumgddt0rna858z3mc5jkx6p3f74jxnkm2ueh7a8tfx";
 //API URL FOR DNCASH.IO
 export const DN_API_URL = process.env.DN_API_URL || 'https://dncashapi.dn-sol.net/dnapi/cash/v1/';
-//DEVICE_ID FOR THIS ATM
-export const DN_DEVICE_ID = process.env.DN_DEVICE_ID || '31df1ac3-3006-4bbf-826f-4060195437e9';
 //CMD V4 API URL
 export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "http://localhost:80/cmdv4/v1/";
 //CMD V4 EVENT API URL

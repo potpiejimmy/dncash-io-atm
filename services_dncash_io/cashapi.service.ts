@@ -5,20 +5,21 @@ import * as util from '../util/utils';
 
 export function registerDevice(): Promise<any> {
     return invokeBackend(config.DN_API_URL+"devices", "POST", {
+        type: "ATM",
         refname: "Headless ATM"
     });
 }
 
-export function verifyCode(radiocode: string): Promise<any> {
-    return invokeBackend(config.DN_API_URL+"tokens/"+radiocode+"?device_uuid="+config.DN_DEVICE_ID, "GET");
+export function verifyCode(radiocode: string, deviceuuid: string): Promise<any> {
+    return invokeBackend(config.DN_API_URL+"tokens/"+radiocode+"?device_uuid="+deviceuuid, "GET");
 }
 
-export function confirmToken(uid: string, updateData: any): Promise<any> {
-    return invokeBackend(config.DN_API_URL+"tokens/"+uid+"?device_uuid="+config.DN_DEVICE_ID, "PUT", updateData);
+export function confirmToken(uid: string, updateData: any, deviceuuid: string): Promise<any> {
+    return invokeBackend(config.DN_API_URL+"tokens/"+uid+"?device_uuid="+deviceuuid, "PUT", updateData);
 }
 
-export function createTrigger(expiresIn: number): Promise<any> {
-    return invokeBackend(config.DN_API_URL+"trigger?device_uuid="+config.DN_DEVICE_ID+"&expiresIn=" + expiresIn, "POST", {});
+export function createTrigger(expiresIn: number, deviceuuid: string): Promise<any> {
+    return invokeBackend(config.DN_API_URL+"trigger?device_uuid="+deviceuuid+"&expiresIn=" + expiresIn, "POST", {});
 }
 
 export function requestTrigger(triggercode: string): Promise<any> {

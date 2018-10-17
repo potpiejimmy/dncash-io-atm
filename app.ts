@@ -1,6 +1,7 @@
 import * as fetch from 'node-fetch';
 import * as mqtt from 'mqtt';
 import * as WebSocket from 'ws';
+import * as storage from 'node-persist';
 
 import * as cashApi from './services_dncash_io/cashapi.service';
 import * as cashout from './services_cmd_v4/cashout';
@@ -15,21 +16,37 @@ import * as nfc from './tag_writer/nfc';
 
 console.log("=== The ultimate banking machine API: " + new Date() + " ===\n");
 
-if(config.IS_TEST_MODE)
-    test.init();
-
-if (!config.DN_CASH_API_KEY || !config.DN_CASH_API_SECRET) {
-    console.log("Please set DN_CASH_API_KEY and DN_CASH_API_SECRET environment variables.\n");
-    process.exit(1);
-}
+let device_uuid: string;
 
 let ws: WebSocket;
 let c: mqtt.Client;
 
-if(config.USE_MQTT)
-    initMQTT();
-else
-    createTrigger();
+init();
+
+async function init() {
+
+    if(config.IS_TEST_MODE)
+        test.init();
+
+    if (!config.DN_CASH_API_KEY || !config.DN_CASH_API_SECRET) {
+        console.log("Please set DN_CASH_API_KEY and DN_CASH_API_SECRET environment variables.\n");
+        process.exit(1);
+    }
+
+    device_uuid = await util.initStorageAndDevice();
+
+    if(config.USE_MQTT)
+        initMQTT();
+    else
+        createTrigger();
+}
+
+async function reinit() {
+    console.log("clearing storage...")
+    await storage.clear();
+    console.log("getting new device id");
+    device_uuid = await util.initStorageAndDevice();
+}
 
 function initMQTT() {
     c = mqtt.connect(config.DN_MQTT_URL);
@@ -54,10 +71,15 @@ function initMQTT() {
 
 async function createTrigger(): Promise<void> {
     try {
-        let res = await cashApi.createTrigger(300)
+        let res = await cashApi.createTrigger(300, device_uuid)
         console.log(JSON.stringify(res)+"\n");
-        if(res.error)
-            process.exit(1);
+        if(res.error) {
+            if(res.message && JSON.stringify(res.message).includes("device with UUID " + device_uuid + " not found.")) {
+                await reinit();
+                createTrigger();
+            }
+            return Promise.resolve();
+        }
 
         if(config.WRITE_NFC_TAG) {
            nfc.writeNfcTag(res.triggercode);
@@ -92,7 +114,7 @@ async function handleToken(token: any): Promise<any> {
         await processCashoutToken(token);
     else
         //await processCashinToken(token);
-        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,0, token.type + " tokens are not supported yet.")).then(token => console.log("rejected token: " + JSON.stringify(token)+"\n"));
+        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,token.amount, token.type + " tokens are not supported yet."),this.device_uuid).then(token => console.log("rejected token: " + JSON.stringify(token)+"\n"));
 
     //we are finished -> close Websocket, unsubsribe from topic and open new MQTT with new trigger code
     if(ws) ws.close();
@@ -104,11 +126,11 @@ async function processCashoutToken(token) {
         let dispenseResponse = await cashout.dispenseMoney(token);
 
         if(!dispenseResponse) {
-            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,0,"Something went wrong while dispensing notes.")).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,"Something went wrong while dispensing notes."),this.device_uuid).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
         }
         else if(dispenseResponse.failed) {
             //something went wrong, update token!
-            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(dispenseResponse.type,0,dispenseResponse)).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(dispenseResponse.type,token.amount,dispenseResponse),this.device_uuid).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
         } else {
             console.log("dispense triggered ... waiting for dispense event\n");
             //waiting for CMD V4 dispense Event response
@@ -118,16 +140,16 @@ async function processCashoutToken(token) {
             if(event.eventType === "dispense") {
                 if(event.timeout && !event.notesTaken) {
                     await cashout.sendRetract();
-                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,0,"Notes were not taken. Retract was executed.")).then(token => console.log("retracted token: " + JSON.stringify(token)+"\n"));
+                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,token.amount,"Notes were not taken. Retract was executed."),this.device_uuid).then(token => console.log("retracted token: " + JSON.stringify(token)+"\n"));
                 } else if(!event.timeout && event.notesTaken) {
                     let cassetteData = await cassettes.getCassetteData(true);
-                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed")).then(token => console.log("confirmed token: " + JSON.stringify(token)+"\n"));
+                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed"),this.device_uuid).then(token => console.log("confirmed token: " + JSON.stringify(token)+"\n"));
                 }
             }
         }
     } catch(err) {
         console.log(err);
-        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,0,err)).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,err),this.device_uuid).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
     }
 }
 
