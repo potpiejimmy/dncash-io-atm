@@ -1,10 +1,8 @@
 //API KEY AND SECRET FOR DNCASH.IO
-export const DN_CASH_API_KEY = process.env.DN_CASH_API_KEY || "0p5y12pvxaeuhyu12gcfa0zu0d7v5vhj4znyyk2x2pd43tg5zf84c64efa6ce6wa";
-export const DN_CASH_API_SECRET = process.env.DN_CASH_API_SECRET || "0p0eec7y2a06v6552zthajw9n385ufv4ub1fhdge21f94g1g2xkd0rq81jrfgdfx";
+export const DN_CASH_API_KEY = process.env.DN_CASH_API_KEY || "hbuwbyaf4m9e8dnxz5dcdh1thyrbzcay7my9ubtpvqphn1k8281mqhq61ha7wwd5";
+export const DN_CASH_API_SECRET = process.env.DN_CASH_API_SECRET || "e2yhq9e620q9b19tw8h1dv5h6djhmkcf6g20pyf8fvefd8atqbt447vgwd3xr6gt";
 //API URL FOR DNCASH.IO
-export const DN_API_URL = process.env.DN_API_URL || 'http://localhost:3000/dnapi/cash/v1/';
-//DEVICE_ID FOR THIS ATM
-export const DN_DEVICE_ID = process.env.DN_DEVICE_ID || '09cf01ed-125e-4145-8d6c-2e09c550044b';
+export const DN_API_URL = process.env.DN_API_URL || 'https://api.dncash.io/dnapi/cash/v1/';
 //CMD V4 API URL
 export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "https://1bba0bcb-eaf3-4720-8173-8590fe3c45df.mock.pstmn.io/";
 //CMD V4 EVENT API URL
@@ -18,9 +16,11 @@ export const USE_PROXY = process.env.USE_PROXY || true;
 //PROXY URL FOR HTTPS REQUESTS
 export const PROXY_URL = process.env.PROXY_URL || 'http://proxy.wincor-nixdorf.com:81';
 //USE NFC TAG
-export const USE_NFC_TAG = process.env.USE_NFC_TAG || false;
+export const WRITE_NFC_TAG = process.env.WRITE_NFC_TAG || false;
 //NFC TAG API URL
-export const NFC_TAG_API_URL = process.env.NFC_TAG_API_URL || "http://localhost:5555";
+export const NFC_TAG_API_URL = process.env.NFC_TAG_API_URL || "http://localhost:5555/";
+//NFC TAG URL
+export const NFC_TAG_URL = process.env.NFC_TAG_URL || "https://dncashatm.dn-sol.net/dncashdemo.html?triggercode=";
 
 
 /*
@@ -32,3 +32,5 @@ export const NFC_TAG_API_URL = process.env.NFC_TAG_API_URL || "http://localhost:
 export const IS_TEST_MODE = process.env.IS_TEST_MODE || true;
 //TAKES ONLY EFFECT WHEN TESTING MODE IS ENABLED
 export const IS_OK_DISPENSE = process.env.IS_OK_DISPENSE || true;
+//DEVICE_ID FOR THIS ATM
+export const DN_DEVICE_ID = process.env.DN_DEVICE_ID || '9d5be08f-16c3-44a9-8a04-44c46ed55cb8';

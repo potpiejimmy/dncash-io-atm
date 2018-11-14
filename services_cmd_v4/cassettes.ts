@@ -18,24 +18,28 @@ export async function getCassetteData(ignoreCassetteDefect: boolean): Promise<an
 }
 
 function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean): any {
-    let cassettes = {};
+    let cassettes = [];
     for(var key in cassetteApiInfo) {
         if(cassetteApiInfo.hasOwnProperty(key)) {
             let id = Number.parseInt(key.substring(0,1));
             if(id > 0 && (ignoreCassetteDefect || (cassetteApiInfo[id+"STA"] && cassetteApiInfo[id+"STA"]==="R"))) {
-                if(!cassettes[id])
-                    cassettes[id] = {};
+                let cassetteInfo = cassettes.find( element => (element && element.id === id+""));
+
+                if(!cassetteInfo) {
+                    cassetteInfo = {"id": id+""};
+                    cassettes.push(cassetteInfo);
+                }
 
                 if(key.endsWith("CUR")) {
-                    cassettes[id]["currency"] = cassetteApiInfo[key];
+                    cassetteInfo["currency"] = cassetteApiInfo[key];
                 }
                 
                 if(key.endsWith("VAL")) {
-                    cassettes[id]["denomination"] = cassetteApiInfo[key]*100;
+                    cassetteInfo["denomination"] = cassetteApiInfo[key]*100;
                 }
     
                 if(key.endsWith("ACT")) {
-                    cassettes[id]["count"] = cassetteApiInfo[key];
+                    cassetteInfo["count"] = cassetteApiInfo[key];
                 }
             }
         }
@@ -45,53 +49,96 @@ function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean):
 }
 
 export function findPerfectCashoutDenomination(availableCassettes: any, token: any): any {
+
+    //if no denom or no algo set -> use always least notes!
+    if(token.info && token.info.denomData)
+        return requestedDenomAlgorithm(availableCassettes, token);
+    else 
+        return leastNotesAlgorithm(availableCassettes, token.amount);
+}
+
+function requestedDenomAlgorithm(availableCassettes :any, token: any): any {
+    console.log("Calculating denom with requestedDenomAlgo");
     let cashoutDenom = {
-        "offerNotesWaitTime":20
+        "offerNotesWaitTime":20,
     };
 
     let foundDenom = false;
+    let amountLeft = token.amount;
 
+    //try to match the denom!
     if(token.info && token.info.denomData) {
         let denomData = token.info.denomData.filter(value => value.c > 0);
-        for(var key in availableCassettes) {
+        availableCassettes.forEach(cassette => {
             //check if we have correct currency symbol in both cases
-            if(availableCassettes[key].currency == token.symbol && denomData.length > 0) {
-                let cassette = availableCassettes[key];
-                for(let i = 0; i < denomData.length; i++) {
-                    if(cassette.denomination == denomData[i].d && cassette.count > denomData[i].c && denomData[i].c < 20) {
-                        foundDenom = true;
-                        cashoutDenom[key+"count"] = denomData[i].c;
-                        //delete currency denom
-                        denomData.splice(i,1);
+            if(cassette.currency == token.symbol && denomData.length > 0) {
+                for(let j = 0; j < denomData.length; j++) {
+                    if(cassette.denomination == denomData[j].d && cassette.count > 0) {
+                        console.log("Kassette: " + JSON.stringify(cassette));
+                        console.log("Denom: " + JSON.stringify(denomData[j]));
+                        console.log("AmountLeft:" + amountLeft);
+                        //we have a denomination match!
+                        let notesToWithdraw = cassette.count > denomData[j].c ? denomData[j].c : cassette.count;
+                        if(notesToWithdraw > 0) {
+                            console.log("notes to withdraw: " + notesToWithdraw);
+                            cashoutDenom[cassette.id+"count"] = notesToWithdraw;
+                            cassette.count -= notesToWithdraw;
+                            amountLeft -= denomData[j].d * notesToWithdraw;
+                            foundDenom = true;
+
+                            denomData.splice(j,1);
+                        }
+                        console.log("current denom after calc: " + JSON.stringify(cashoutDenom));
+                        console.log("AmountLeft after calc: " + amountLeft + "\n")
                         break;
                     }
                 }
             }
-        }
+        });
 
-        //check if there are some denoms missing
-        if(denomData && denomData.length > 0) {
-            //we have some denoms left which could not denominated
-            for(let i = 0; i < denomData.length; i++) {
-                if(denomData[i].c > 0) {
-                    let amountLeft = denomData[i].c * denomData[i].d;
-                    for(var key in availableCassettes) {
-                        //check if we have correct currency symbol in both cases
-                        if(availableCassettes[key].currency == token.symbol) {
-                            let cassette = availableCassettes[key];
-                            if(amountLeft%cassette.denomination == 0 && cassette.count > denomData[i].c && amountLeft/cassette.denomination < 20) {
-                                foundDenom = true;
-                                cashoutDenom[key+"count"] = amountLeft/cassette.denomination;
-                                //delete currency denom
-                                denomData.splice(i,1);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
+        console.log("denom after requDenomAlgo: " + JSON.stringify(cashoutDenom));
+
+        //check if we have some amount left
+        if(amountLeft > 0) {
+            //we have some denoms left which could not be denominated
+            return leastNotesAlgorithm(availableCassettes, amountLeft, cashoutDenom);   
         }
     }
+
+    return {foundDenom: foundDenom, cashoutDenom: cashoutDenom};
+}
+
+function leastNotesAlgorithm(availableCassettes: any, amountLeft: any, currentCashoutDenom? : any): any {
+    console.log("Calculating denom with leastNotesAlgo");
+    console.log("current cassettes in least notes algo: " + JSON.stringify(availableCassettes));
+    console.log("Current amount left in least notes algo:" + amountLeft);
+    console.log("current denom in least notes algo: " + JSON.stringify(currentCashoutDenom) + "\n");
+
+    let cashoutDenom = currentCashoutDenom ? currentCashoutDenom : {"offerNotesWaitTime":20};
+
+    let foundDenom = currentCashoutDenom ? currentCashoutDenom.foundDenom : false;
+
+    //sort cassette list with biggest denom first!
+    availableCassettes.sort((cassA, cassB) => cassB.denomination - cassA.denomination);
+    
+    //check if we can actually withdraw some money!
+    availableCassettes.forEach(cassette => {
+        if(cassette.denomination <= amountLeft) {
+            let requestedNumberOfNotesToWithdraw = (amountLeft - amountLeft%cassette.denomination) / cassette.denomination;
+            let capableNotesToWithdraw = (cassette.count > requestedNumberOfNotesToWithdraw) ? requestedNumberOfNotesToWithdraw : cassette.count;
+
+            if(capableNotesToWithdraw > 0) {
+                foundDenom = true;
+                if(cashoutDenom[cassette.id+"count"])
+                    cashoutDenom[cassette.id+"count"] += capableNotesToWithdraw;
+                else
+                    cashoutDenom[cassette.id+"count"] = capableNotesToWithdraw;
+    
+                amountLeft =- capableNotesToWithdraw * cassette.denomination;
+                cassette.count =- capableNotesToWithdraw;
+            }
+        }
+    });
 
     return {foundDenom: foundDenom, cashoutDenom: cashoutDenom};
 }

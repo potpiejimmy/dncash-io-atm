@@ -28,9 +28,11 @@ export function calculateCashoutAmount(cassetteData: any, dispenseResponse: any)
     console.log("Cassette data for amount calc: " + JSON.stringify(cassetteData) + "\n");
     let cashoutAmount = 0;
     Object.keys(dispenseResponse).forEach(key => {
-        if(key.endsWith("dispenseCount") && cassetteData[key.substring(0,1)]) {
-            cashoutAmount += cassetteData[key.substring(0,1)].denomination * dispenseResponse[key];
-        }
+        cassetteData.forEach(cassette => {
+            if(key.endsWith("dispenseCount") && cassette.id === key.substring(0,1)) {
+                cashoutAmount += cassette.denomination * dispenseResponse[key];
+            }
+        });
     });
 
     console.log("cashout amount: " + cashoutAmount + "\n");

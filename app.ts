@@ -114,7 +114,7 @@ async function handleToken(token: any): Promise<any> {
         await processCashoutToken(token);
     else
         //await processCashinToken(token);
-        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,token.amount, token.type + " tokens are not supported yet."),this.device_uuid).then(token => console.log("rejected token: " + JSON.stringify(token)+"\n"));
+        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,token.amount, token.type + " tokens are not supported yet."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
 
     //we are finished -> close Websocket, unsubsribe from topic and open new MQTT with new trigger code
     if(ws) ws.close();
@@ -126,11 +126,11 @@ async function processCashoutToken(token) {
         let dispenseResponse = await cashout.dispenseMoney(token);
 
         if(!dispenseResponse) {
-            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,"Something went wrong while dispensing notes."),this.device_uuid).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,"Something went wrong while dispensing notes."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
         }
         else if(dispenseResponse.failed) {
             //something went wrong, update token!
-            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(dispenseResponse.type,token.amount,dispenseResponse),this.device_uuid).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+            return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(dispenseResponse.type,token.amount,dispenseResponse), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
         } else {
             console.log("dispense triggered ... waiting for dispense event\n");
             //waiting for CMD V4 dispense Event response
@@ -140,16 +140,23 @@ async function processCashoutToken(token) {
             if(event.eventType === "dispense") {
                 if(event.timeout && !event.notesTaken) {
                     await cashout.sendRetract();
-                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,token.amount,"Notes were not taken. Retract was executed."),this.device_uuid).then(token => console.log("retracted token: " + JSON.stringify(token)+"\n"));
+                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,token.amount,"Notes were not taken. Retract was executed."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
                 } else if(!event.timeout && event.notesTaken) {
                     let cassetteData = await cassettes.getCassetteData(true);
-                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed"),this.device_uuid).then(token => console.log("confirmed token: " + JSON.stringify(token)+"\n"));
+                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed"), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
                 }
             }
         }
     } catch(err) {
         console.log(err);
-        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,err),this.device_uuid).then(token => console.log("failed token: " + JSON.stringify(token)+"\n"));
+        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,err), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
+    }
+}
+
+function handleReturnedToken(confirmedToken: any, originalToken: any) {
+    console.log("confirmed token: " + JSON.stringify(confirmedToken)+"\n")
+    if(confirmedToken && confirmedToken.error) {
+        return cashApi.confirmToken(originalToken.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,originalToken.amount,confirmedToken.message), device_uuid).then(returnedToken => console.log("error token: " + JSON.stringify(returnedToken)+"\n"));
     }
 }
 
