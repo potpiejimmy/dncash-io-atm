@@ -45,6 +45,9 @@ function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean):
         }
     }
 
+    if(cassettes.length <= 0)
+        cassettes = response.buildApiErrorResponse("No cassette is working at the moment. Executing reset...", "FAILED");
+
     return cassettes;
 }
 
@@ -120,12 +123,17 @@ function leastNotesAlgorithm(availableCassettes: any, amountLeft: any, currentCa
 
     //sort cassette list with biggest denom first!
     availableCassettes.sort((cassA, cassB) => cassB.denomination - cassA.denomination);
+    console.log("sorted cassettes: " + JSON.stringify(availableCassettes));
     
     //check if we can actually withdraw some money!
     availableCassettes.forEach(cassette => {
+        console.log("cassette denom: " + cassette.denomination);
+        console.log("amount left:" + amountLeft);
+
         if(cassette.denomination <= amountLeft) {
             let requestedNumberOfNotesToWithdraw = (amountLeft - amountLeft%cassette.denomination) / cassette.denomination;
             let capableNotesToWithdraw = (cassette.count > requestedNumberOfNotesToWithdraw) ? requestedNumberOfNotesToWithdraw : cassette.count;
+            console.log("Cassette: " + JSON.stringify(cassette) + " and cabable to withdraw: " + capableNotesToWithdraw);
 
             if(capableNotesToWithdraw > 0) {
                 foundDenom = true;
@@ -134,8 +142,9 @@ function leastNotesAlgorithm(availableCassettes: any, amountLeft: any, currentCa
                 else
                     cashoutDenom[cassette.id+"count"] = capableNotesToWithdraw;
     
-                amountLeft =- capableNotesToWithdraw * cassette.denomination;
-                cassette.count =- capableNotesToWithdraw;
+                amountLeft -= capableNotesToWithdraw * cassette.denomination;
+                cassette.count -= capableNotesToWithdraw;
+                console.log("amoutn left after calc: " + amountLeft);
             }
         }
     });

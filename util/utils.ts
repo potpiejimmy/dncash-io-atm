@@ -1,7 +1,9 @@
 import * as config from '../config/config';
 import * as HttpsProxyAgent from 'https-proxy-agent';
+import * as WebSocket from 'ws';
 import * as storage from 'node-persist';
 import * as cashApi from '../services_dncash_io/cashapi.service';
+import * as test from '../test/test';
 
 export enum TOKEN_TYPES {
     CASHOUT = "CASHOUT",
@@ -54,4 +56,32 @@ export async function initStorageAndDevice(): Promise<string> {
 
     console.log("device uuid: " + device_uuid);
     return device_uuid;
+}
+
+export function waitForWebsocketEvent(ws: any, eventType: string): Promise<any> {
+    ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
+    return new Promise(function(resolve, reject) {
+        ws.onopen = () => console.log("CMD V4 WebSocket OPEN");
+
+        ws.onclose = m => {
+            console.log("CMD V4 WebSocket CLOSED: " + m.reason);
+            resolve("timeout");
+        }
+
+        ws.onmessage = m => {
+            if(JSON.parse(m.data.toString()).eventType === eventType)
+                resolve(m.data);
+        };
+
+        ws.onerror = m => {
+            reject("CMD V4 WebSocket ERROR: " + m.message);
+        };
+
+        setTimeout(() => {if(ws)ws.close()}, 120000);
+
+        if(config.IS_TEST_MODE && eventType === "dispense") {
+            //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET WITH 5s DELAY
+            setTimeout(test.sendTestResponse, 5000);
+        }
+    });
 }

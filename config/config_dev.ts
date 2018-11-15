@@ -11,6 +11,10 @@ export const CMD_V4_API_EVENT_URL = process.env.CMD_V4_API_EVENT_URL || "ws://lo
 export const USE_MQTT = process.env.USE_MQTT || false;
 //MQTT URL FOR DNCASH.IO
 export const DN_MQTT_URL = process.env.DN_MQTT_URL || 'wss://mosquitto.dn-sol.net';
+//MQTT USER
+export const DN_MQTT_USER = process.env.DN_MQTT_USER || 'dncashio';
+//MQTT PASSWIRD
+export const DN_MQTT_PASSWORD = process.env.DN_MQTT_PASSWORD || 'dncashio';
 //USE PROXY TO TUNNEL HTTPS REQUESTS
 export const USE_PROXY = process.env.USE_PROXY || true;
 //PROXY URL FOR HTTPS REQUESTS
