@@ -73,8 +73,12 @@ export async function waitForWebsocketEvent(ws: any, eventType: string, repeat: 
         ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
     } catch(err) {
         //CMD V4 API not available
-        await recovery.restartCMDV4API();
-        return waitForWebsocketEvent(ws, eventType, false);
+        if(repeat) {
+            await recovery.restartCMDV4API();
+            return waitForWebsocketEvent(ws, eventType, false);
+        } else {
+            return Promise.reject("CMDV4 API not responding");
+        }
     }
     return new Promise(function(resolve, reject) {
         ws.onopen = () => console.log("CMD V4 WebSocket OPEN");
@@ -93,8 +97,8 @@ export async function waitForWebsocketEvent(ws: any, eventType: string, repeat: 
             reject("CMD V4 WebSocket ERROR: " + m.message);
         };
 
-        //wait for two minutes -> of no event -> just continue!
-        setTimeout(() => {if(ws)ws.terminate()}, 120000);
+        //wait for one minute -> if no event -> just continue!
+        setTimeout(() => {if(ws)ws.terminate()}, 60000);
 
         if(config.IS_TEST_MODE && eventType === "dispense") {
             //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET WITH 5s DELAY

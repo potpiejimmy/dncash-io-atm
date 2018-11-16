@@ -115,22 +115,21 @@ function requestedDenomAlgorithm(availableCassettes :any, token: any): any {
         //check if we have some amount left
         if(amountLeft > 0) {
             //we have some denoms left which could not be denominated
-            return leastNotesAlgorithm(availableCassettes, amountLeft, cashoutDenom);   
+            return leastNotesAlgorithm(availableCassettes, amountLeft, {foundDenom: foundDenom, cashoutDenom: cashoutDenom});   
         }
     }
 
     return {foundDenom: foundDenom, cashoutDenom: cashoutDenom};
 }
 
-function leastNotesAlgorithm(availableCassettes: any, amountLeft: any, currentCashoutDenom? : any): any {
-    console.log("Calculating denom with leastNotesAlgo");
+function leastNotesAlgorithm(availableCassettes: any, amountLeft: any, currentReturnValue? : any): any {
     console.log("current cassettes in least notes algo: " + JSON.stringify(availableCassettes));
     console.log("Current amount left in least notes algo:" + amountLeft);
-    console.log("current denom in least notes algo: " + JSON.stringify(currentCashoutDenom) + "\n");
+    console.log("current return value in least notes algo: " + JSON.stringify(currentReturnValue) + "\n");
 
-    let cashoutDenom = currentCashoutDenom ? currentCashoutDenom : {"offerNotesWaitTime":20};
+    let cashoutDenom = currentReturnValue ? currentReturnValue.cashoutDenom : {"offerNotesWaitTime":20};
 
-    let foundDenom = currentCashoutDenom ? currentCashoutDenom.foundDenom : false;
+    let foundDenom = currentReturnValue ? currentReturnValue.foundDenom : false;
 
     //sort cassette list with biggest denom first!
     availableCassettes.sort((cassA, cassB) => cassB.denomination - cassA.denomination);

@@ -21,13 +21,17 @@ export async function sendReset(repeatRequest: boolean): Promise<any> {
 
     if(cmdV4ApiResponse && cmdV4ApiResponse.ok) {
         console.log("waiting for 'resetDone' event...");
-        let message = await util.waitForWebsocketEvent(ws, "resetDone", true);
-        let event = JSON.parse(message.toString());
-        if(ws) ws.terminate();
-        if(event.eventType === "resetDone") {
-            return initCassettes();
-        } else if(event === "timeout") {
-            return responseHelper.buildApiErrorResponse("No WebSocket event was triggered", "FAILED")
+        let message
+        try {
+            message = await util.waitForWebsocketEvent(ws, "resetDone", true);
+        } catch(err) {
+            return responseHelper.buildApiErrorResponse("No WebSocket event was triggered", "FAILED");
+        }
+        if(message) {
+            let event = JSON.parse(message.toString());
+            if(ws) ws.terminate();
+            if(event.eventType === "resetDone")
+                return initCassettes();
         }
     } else {
         return responseHelper.buildErrorResponseFromCmdV4(cmdV4ApiResponse);

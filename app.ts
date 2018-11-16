@@ -159,20 +159,25 @@ async function processCashoutToken(token) {
             console.log("dispense triggered ... waiting for dispense event\n");
             util.changeLED('blink');
             //waiting for CMD V4 dispense Event response
-            let message = await util.waitForWebsocketEvent(ws,"dispense", true);
-            let event = JSON.parse(message.toString());
-            if(ws) ws.terminate();
-            if(event.eventType === "dispense") {
-                util.changeLED('off');
-                if(event.timeout && !event.notesTaken) {
-                    await cashout.sendRetract(true);
-                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,token.amount,"Notes were not taken. Retract was executed."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
-                } else if(!event.timeout && event.notesTaken) {
-                    let cassetteData = await cassettes.getCassetteData(true, true);
-                    return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed"), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
+            let message;
+            try {
+                message = await util.waitForWebsocketEvent(ws,"dispense", true);
+            } catch(err) {
+                return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,"Something went wrong while dispensing notes."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
+            }
+            if(message) {
+                let event = JSON.parse(message.toString());
+                if(ws) ws.terminate();
+                if(event.eventType === "dispense") {
+                    util.changeLED('off');
+                    if(event.timeout && !event.notesTaken) {
+                        await cashout.sendRetract(true);
+                        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,token.amount,"Notes were not taken. Retract was executed."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
+                    } else if(!event.timeout && event.notesTaken) {
+                        let cassetteData = await cassettes.getCassetteData(true, true);
+                        return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed"), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
+                    }
                 }
-            } else if(event === "timeout") {
-
             }
         }
     } catch(err) {
