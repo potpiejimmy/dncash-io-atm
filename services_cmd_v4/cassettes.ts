@@ -79,6 +79,7 @@ function requestedDenomAlgorithm(availableCassettes :any, token: any): any {
 
     let foundDenom = false;
     let amountLeft = token.amount;
+    let overallNumberOfNotes = 0;
 
     //try to match the denom!
     if(token.info && token.info.denomData) {
@@ -95,6 +96,8 @@ function requestedDenomAlgorithm(availableCassettes :any, token: any): any {
                         let notesToWithdraw = cassette.count > denomData[j].c ? denomData[j].c : cassette.count;
                         if(notesToWithdraw > 0) {
                             console.log("notes to withdraw: " + notesToWithdraw);
+                            overallNumberOfNotes+= notesToWithdraw;
+
                             cashoutDenom[cassette.id+"count"] = notesToWithdraw;
                             cassette.count -= notesToWithdraw;
                             amountLeft -= denomData[j].d * notesToWithdraw;
@@ -115,11 +118,11 @@ function requestedDenomAlgorithm(availableCassettes :any, token: any): any {
         //check if we have some amount left
         if(amountLeft > 0) {
             //we have some denoms left which could not be denominated
-            return leastNotesAlgorithm(availableCassettes, amountLeft, {foundDenom: foundDenom, cashoutDenom: cashoutDenom});   
+            return leastNotesAlgorithm(availableCassettes, amountLeft, {foundDenom: foundDenom, cashoutDenom: cashoutDenom, overallNumberOfNotes: overallNumberOfNotes});   
         }
     }
 
-    return {foundDenom: foundDenom, cashoutDenom: cashoutDenom};
+    return {foundDenom: foundDenom, cashoutDenom: cashoutDenom, overallNumberOfNotes: overallNumberOfNotes};
 }
 
 function leastNotesAlgorithm(availableCassettes: any, amountLeft: any, currentReturnValue? : any): any {
@@ -128,8 +131,8 @@ function leastNotesAlgorithm(availableCassettes: any, amountLeft: any, currentRe
     console.log("current return value in least notes algo: " + JSON.stringify(currentReturnValue) + "\n");
 
     let cashoutDenom = currentReturnValue ? currentReturnValue.cashoutDenom : {"offerNotesWaitTime":20};
-
     let foundDenom = currentReturnValue ? currentReturnValue.foundDenom : false;
+    let overallNumberOfNotes = currentReturnValue ? currentReturnValue.overallNumberOfNotes : 0
 
     //sort cassette list with biggest denom first!
     availableCassettes.sort((cassA, cassB) => cassB.denomination - cassA.denomination);
@@ -147,6 +150,8 @@ function leastNotesAlgorithm(availableCassettes: any, amountLeft: any, currentRe
 
             if(capableNotesToWithdraw > 0) {
                 foundDenom = true;
+                overallNumberOfNotes+= capableNotesToWithdraw;
+
                 if(cashoutDenom[cassette.id+"count"])
                     cashoutDenom[cassette.id+"count"] += capableNotesToWithdraw;
                 else
@@ -159,5 +164,5 @@ function leastNotesAlgorithm(availableCassettes: any, amountLeft: any, currentRe
         }
     });
 
-    return {foundDenom: foundDenom, cashoutDenom: cashoutDenom};
+    return {foundDenom: foundDenom, cashoutDenom: cashoutDenom, overallNumberOfNotes: overallNumberOfNotes};
 }
