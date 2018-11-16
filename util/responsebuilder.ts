@@ -1,7 +1,9 @@
 import { addListener } from "cluster";
 
 export function buildErrorResponseFromCmdV4(cmdV4ApiResponse: any) {
-    if(cmdV4ApiResponse.status == 500) {
+    if(!cmdV4ApiResponse)
+        return buildApiErrorResponse("CMDV4 API not responding.", "FAILED");
+    else if(cmdV4ApiResponse.status == 500) {
         return cmdV4ApiResponse.json().then(apiErrorResponse => {
             if(apiErrorResponse.errors && apiErrorResponse.errors.length > 0) {
                 return buildApiErrorResponse(apiErrorResponse.errors[0].msg);

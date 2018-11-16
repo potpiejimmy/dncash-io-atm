@@ -1,5 +1,5 @@
 import * as fetch from 'node-fetch';
-import * as FormData from 'form-data';
+import { URLSearchParams } from 'url';
 import * as WebSocket from 'ws';
 import * as storage from 'node-persist';
 import * as HttpsProxyAgent from 'https-proxy-agent';
@@ -104,9 +104,7 @@ export async function waitForWebsocketEvent(ws: any, eventType: string, repeat: 
 }
 
 export async function handleCMDV4Response(cmdV4ApiResponse: any) {
-    if(!cmdV4ApiResponse)
-        return responseHelper.buildApiErrorResponse("CMDV4 API not responding.", "FAILED");
-    else if(!cmdV4ApiResponse.ok)
+    if(!cmdV4ApiResponse || !cmdV4ApiResponse.ok)
         return responseHelper.buildErrorResponseFromCmdV4(cmdV4ApiResponse);
     else {
         let jsonResponse = await cmdV4ApiResponse.json();
@@ -117,11 +115,11 @@ export async function handleCMDV4Response(cmdV4ApiResponse: any) {
 
 export async function changeLED(status: string) {
     try {
-        const form = new FormData();
-        form.append('access_token', config.PARTICLE_ACCESS_TOKEN);
-        form.append('arg', status);
+        const params = new URLSearchParams();
+        params.append('access_token', config.PARTICLE_ACCESS_TOKEN);
+        params.append('arg', status);
 
-        fetch.default(config.PARTICLE_URL, {method: "POST", body: form});
+        fetch.default(config.PARTICLE_URL, {method: 'POST', body: params}).catch(() =>{});//Nothing to do
     } catch(err) {
         //nothing to do here if it cannot be reached.
     }

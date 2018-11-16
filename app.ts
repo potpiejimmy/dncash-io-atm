@@ -161,7 +161,7 @@ async function processCashoutToken(token) {
             //waiting for CMD V4 dispense Event response
             let message = await util.waitForWebsocketEvent(ws,"dispense", true);
             let event = JSON.parse(message.toString());
-            if(ws) ws.close();
+            if(ws) ws.terminate();
             if(event.eventType === "dispense") {
                 util.changeLED('off');
                 if(event.timeout && !event.notesTaken) {
