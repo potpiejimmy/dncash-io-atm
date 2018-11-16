@@ -18,6 +18,7 @@ import * as nfc from './tag_writer/nfc';
 console.log("=== The ultimate banking machine API: " + new Date() + " ===\n");
 
 let device_uuid: string;
+let canProcessToken = false;
 
 let ws: WebSocket;
 let mqttClient: mqtt.Client;
@@ -88,18 +89,25 @@ async function createTrigger(): Promise<void> {
         
         listenForTrigger(res.triggercode);
     } catch(err) {
+        util.changeLED('off');
         console.log(err);
         process.exit(1);
     };
 }
 
 async function listenForTrigger(trigger: string): Promise<any> {
+    canProcessToken = true;
+    console.log("Can process token? " + canProcessToken);
+
     if(config.USE_MQTT) {
-        mqttClient.subscribe('dncash-io/trigger/' + trigger, () => { console.log("MQTT subscribed for trigger: " + trigger)});
+        mqttClient.subscribe('dncash-io/trigger/' + trigger, () => { console.log("MQTT subscribed for trigger: " + trigger)});    
+        util.changeLED('on');
     } else {
-        return fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
+        fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
             return handleToken(token);
         }).catch(() => createTrigger());
+
+        util.changeLED('on');
     }
 }
 
@@ -110,8 +118,14 @@ function handleMessage(topic, message) {
 
 async function handleToken(token: any): Promise<any> {
     console.log("Received token: " + JSON.stringify(token) + "\n");
-    //directly unsubscribe for this trigger to not listen for more tokens!
-    if(config.USE_MQTT) {
+    console.log("can proccess token? : " + canProcessToken);
+    if(!canProcessToken)
+        cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,token.amount,"Device is not ready yet."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
+    else
+        canProcessToken = false;
+
+    //unsubscribe for this trigger to not listen for more tokens!
+    if(config.USE_MQTT && !config.USE_STATIC_TRIGGER) {
         mqttClient.unsubscribe("dncash-io/trigger/+", () => { console.log("MQTT unsubscribed.")});
     }
 
@@ -119,41 +133,46 @@ async function handleToken(token: any): Promise<any> {
         await processCashoutToken(token);
     else
         //await processCashinToken(token);
-        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,token.amount, token.type + " tokens are not supported yet."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
+        await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,token.amount, "This device does not support " + token.type + " tokens."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
 
     //we are finished -> close Websocket, unsubsribe from topic and open new MQTT with new trigger code
-    if(ws) ws.close();
+    if(ws) ws.terminate();
     createTrigger();
 }
 
 async function processCashoutToken(token) {
     try {
+        util.changeLED('off');
         let dispenseResponse = await cashout.dispenseMoney(token);
 
         if(!dispenseResponse) {
             await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,"Something went wrong while dispensing notes."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
-            return recovery.sendReset();
+            return recovery.sendReset(true);
         }
         else if(dispenseResponse.failed) {
             //something went wrong, update token!
             await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(dispenseResponse.type,token.amount,dispenseResponse), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
-            return recovery.sendReset();
+            // -> WENN NO SUITABLE DENOM FOUND -> KEIN RESET!!!
+            if(!dispenseResponse.noDenom)
+                return recovery.sendReset(true);
         } else {
             console.log("dispense triggered ... waiting for dispense event\n");
+            util.changeLED('blink');
             //waiting for CMD V4 dispense Event response
-            let message = await util.waitForWebsocketEvent(ws,"dispense");
+            let message = await util.waitForWebsocketEvent(ws,"dispense", true);
             let event = JSON.parse(message.toString());
             if(ws) ws.close();
             if(event.eventType === "dispense") {
+                util.changeLED('off');
                 if(event.timeout && !event.notesTaken) {
-                    await cashout.sendRetract();
+                    await cashout.sendRetract(true);
                     return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,token.amount,"Notes were not taken. Retract was executed."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
                 } else if(!event.timeout && event.notesTaken) {
-                    let cassetteData = await cassettes.getCassetteData(true);
+                    let cassetteData = await cassettes.getCassetteData(true, true);
                     return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed"), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
                 }
             } else if(event === "timeout") {
-                
+
             }
         }
     } catch(err) {

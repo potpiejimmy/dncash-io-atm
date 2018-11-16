@@ -1,12 +1,18 @@
 //API KEY AND SECRET FOR DNCASH.IO
 export const DN_CASH_API_KEY = process.env.DN_CASH_API_KEY || "m0bmhdgabgzt4ab80fwr2rn9cb8ht4da82988m80tbk8npv91vju5pgdyvvndv7n";
 export const DN_CASH_API_SECRET = process.env.DN_CASH_API_SECRET || "cjw52dy8k9xah7zumqr2gqpfub8h4f9t7extw7td9mahy55tvnd2kqugx3pbf892";
+//USE STATIC TRIGGER
+export const USE_STATIC_TRIGGER = process.env.USE_STATIC_TRIGGER || true;
 //API URL FOR DNCASH.IO
 export const DN_API_URL = process.env.DN_API_URL || 'https://api.dncash.io/dnapi/cash/v1/';
 //CMD V4 API URL
 export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "http://localhost:80/cmdv4/v1/";
 //CMD V4 EVENT API URL
 export const CMD_V4_API_EVENT_URL = process.env.CMD_V4_API_EVENT_URL || "ws://localhost:80/cmdv4/v1/events";
+//PARTICLE URL
+export const PARTICLE_URL = process.env.PARTICLE_URL || "https://api.particle.io/v1/devices/3a003a000347343138333038/led";
+//PARTICLE ACCESS TOKEN
+export const PARTICLE_ACCESS_TOKEN = process.env.PARTICLE_ACCESS_TOKEN || "50b0f4e64c9d57c32ba3790581b687782d2a201e";
 //USE MQTT OR HTTP REQUEST
 export const USE_MQTT = process.env.USE_MQTT || true;
 //MQTT URL FOR DNCASH.IO

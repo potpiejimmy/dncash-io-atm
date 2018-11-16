@@ -1,3 +1,5 @@
+import { addListener } from "cluster";
+
 export function buildErrorResponseFromCmdV4(cmdV4ApiResponse: any) {
     if(cmdV4ApiResponse.status == 500) {
         return cmdV4ApiResponse.json().then(apiErrorResponse => {
@@ -11,16 +13,18 @@ export function buildErrorResponseFromCmdV4(cmdV4ApiResponse: any) {
     }
 }
 
-export function buildApiErrorResponse(message?: string, type?: string): any {
+export function buildApiErrorResponse(message?: string, type?: string, addInfo?: any): any {
     let errorResponse = {
         failed: true,
         type: type || "FAILED",
         message: message || "Something went wrong while trying to dispense money."
     }
 
+    if(addInfo)
+        errorResponse[addInfo.key] = addInfo.value;
+
     return errorResponse;
 }
-
 
 export function createTokenUpdateResponse(tokenState: string, amount: Number, info: any): any {
     return {

@@ -1,17 +1,28 @@
 import * as fetch from 'node-fetch';
 import * as util from '../util/utils';
+import * as recovery from '../util/recovery';
 import * as config from '../config/config';
 import * as response from '../util/responsebuilder';
 
-export async function getCassetteData(ignoreCassetteDefect: boolean): Promise<any> {
+export async function getCassetteData(ignoreCassetteDefect: boolean, repeatRequest: boolean): Promise<any> {
     console.log("getting cassette data\n");
     //call CMDV4 API and get Cassette Info
-    let cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"cassettes", { agent: util.getAgent(config.CMD_V4_API_URL), headers: util.getJsonHeader(), method: "GET"});
-    
+    let cmdV4ApiResponse;
+    try {
+        cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"cassettes", { agent: util.getAgent(config.CMD_V4_API_URL), headers: util.getJsonHeader(), method: "GET"});
+    } catch(err) {
+        if(repeatRequest) {
+            await recovery.restartCMDV4API();
+            return getCassetteData(ignoreCassetteDefect, false);
+        }
+    }
+    if(!cmdV4ApiResponse)
+        return util.handleCMDV4Response(cmdV4ApiResponse);
     if(!cmdV4ApiResponse.ok)
         return response.buildErrorResponseFromCmdV4(cmdV4ApiResponse);
     else {
         let cassetteData = await cmdV4ApiResponse.json();
+        //let cassetteData = {"1LOW":50,"RACT":1006,"3L_D":0,"4L_D":0,"1TOL":0,"3CUR":"EUR","2VAL":10,"2REJ":1,"4REJ":0,"1CUR":"EUR","SRACT":0,"2ACT":976,"3LOW":50,"RRET":6,"1REJ":5,"3VAL":20,"LEN":511,"4VAL":50,"1L_D":0,"4ACT":979,"4LEN":0,"3LEN":0,"2L_D":0,"3ACT":979,"1LEN":0,"1NDV":0,"1VAL":5,"2NDV":0,"1REL":0,"2LOW":50,"4NUM":"4444444","4NDV":0,"3NUM":"3333333","3STA":"D","2NUM":"2222222","2STA":"N","3TOL":0,"3NDV":0,"2REL":0,"RSTA":"R","4REL":0,"4STA":"N","2TOL":0,"4LOW":50,"4CUR":"EUR","4TOL":0,"3REJ":0,"1STA":"N","1NUM":"1111111","1ACT":974,"2LEN":0,"3REL":0,"2CUR":"EUR"};
         console.log("cassette data CMDV4 api response: " + JSON.stringify(cassetteData) + "\n");
         return parseCassetteData(cassetteData, ignoreCassetteDefect);
     }
