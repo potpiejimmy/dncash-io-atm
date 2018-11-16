@@ -85,9 +85,9 @@ async function initSingleCassette(cassetteId: string, repeatRequest: boolean) {
 export function restartCMDV4API() {
     console.log("restarting CMDV4 API");
     return new Promise(function(resolve, reject) {
-        process.exec('sudo /etc/init.d/cmdv4rest.sh stop')
+        process.exec('sudo /etc/init.d/cmdv4rest stop')
         return setTimeout(() => {
-            process.exec('sudo /etc/init.d/cmdv4rest.sh start');
+            process.exec('sudo /etc/init.d/cmdv4rest start');
             //wait 1500ms to finish start
             return setTimeout(()=>{ console.log("restart CMDV4 API DONE"); resolve()},1500);
         },1500);
