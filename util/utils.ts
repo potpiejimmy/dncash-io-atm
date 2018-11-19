@@ -68,14 +68,14 @@ export async function initStorageAndDevice(): Promise<string> {
     return device_uuid;
 }
 
-export async function waitForWebsocketEvent(ws: any, eventType: string, repeat: boolean): Promise<any> {
+export async function waitForWebsocketEvent(ws: any, eventType: string, timeout: number, repeat: boolean): Promise<any> {
     try {
         ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
     } catch(err) {
         //CMD V4 API not available
         if(repeat) {
             await recovery.restartCMDV4API();
-            return waitForWebsocketEvent(ws, eventType, false);
+            return waitForWebsocketEvent(ws, eventType, timeout, false);
         } else {
             return Promise.reject("CMDV4 API not responding");
         }
@@ -89,21 +89,24 @@ export async function waitForWebsocketEvent(ws: any, eventType: string, repeat: 
         }
 
         ws.onmessage = m => {
-            if(JSON.parse(m.data.toString()).eventType === eventType)
+            if(JSON.parse(m.data.toString()).eventType === eventType) {
+                ws.terminate();
                 resolve(m.data);
+            }
         };
 
         ws.onerror = m => {
+            ws.terminate();
             reject("CMD V4 WebSocket ERROR: " + m.message);
         };
 
         //wait for one minute -> if no event -> just continue!
-        setTimeout(() => {if(ws)ws.terminate()}, 60000);
+        setTimeout(() => {if(ws)ws.terminate()}, timeout);
 
-        if(config.IS_TEST_MODE && eventType === "dispense") {
-            //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET WITH 5s DELAY
-            setTimeout(test.sendTestResponse, 5000);
-        }
+        //if(config.IS_TEST_MODE && eventType === "dispense") {
+        //    //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET WITH 5s DELAY
+        //    setTimeout(test.sendTestResponse, 5000);
+        //}
     });
 }
 

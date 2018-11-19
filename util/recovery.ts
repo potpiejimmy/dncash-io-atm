@@ -23,13 +23,12 @@ export async function sendReset(repeatRequest: boolean): Promise<any> {
         console.log("waiting for 'resetDone' event...");
         let message
         try {
-            message = await util.waitForWebsocketEvent(ws, "resetDone", true);
+            message = await util.waitForWebsocketEvent(ws, "resetDone", 60000 , true);
         } catch(err) {
             return responseHelper.buildApiErrorResponse("No WebSocket event was triggered", "FAILED");
         }
         if(message) {
             let event = JSON.parse(message.toString());
-            if(ws) ws.terminate();
             if(event.eventType === "resetDone")
                 return initCassettes();
         }

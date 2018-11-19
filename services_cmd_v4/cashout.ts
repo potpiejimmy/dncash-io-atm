@@ -14,8 +14,8 @@ export async function dispenseMoney(token: any): Promise<any> {
         let denomResponse = cassettes.findPerfectCashoutDenomination(cassetteData, token);
         console.log("calculated denomination: " + JSON.stringify(denomResponse) + "\n");
 
-        if(denomResponse.overAllNumberOfNotes > 30)
-            return responseHelper.buildApiErrorResponse("You cannot withdraw more than 30 notes at a time!", util.TOKEN_STATES.REJECTED, {key:"noReset", value:true});
+        if(denomResponse.overAllNumberOfNotes > 20)
+            return responseHelper.buildApiErrorResponse("You cannot withdraw more than 20 notes at a time!", util.TOKEN_STATES.REJECTED, {key:"noReset", value:true});
         if(denomResponse.foundDenom)
             //call CMDV4 API to dispense notes
             return dispense(denomResponse.cashoutDenom, true);

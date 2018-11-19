@@ -135,8 +135,7 @@ async function handleToken(token: any): Promise<any> {
         //await processCashinToken(token);
         await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,token.amount, "This device does not support " + token.type + " tokens."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
 
-    //we are finished -> close Websocket, unsubsribe from topic and open new MQTT with new trigger code
-    if(ws) ws.terminate();
+    // we are finished -> create new trigger
     createTrigger();
 }
 
@@ -161,13 +160,15 @@ async function processCashoutToken(token) {
             //waiting for CMD V4 dispense Event response
             let message;
             try {
-                message = await util.waitForWebsocketEvent(ws,"dispense", true);
+                message = await util.waitForWebsocketEvent(ws,"dispense", 30000, true);
             } catch(err) {
-                return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,"Something went wrong while dispensing notes."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
+                console.log("No WebSocket event was triggered.")
+                //do not update token -> keep it in locked 
+                //return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,"No WebSocket event was triggered."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
             }
             if(message) {
+                console.log("WebSocket message: " + JSON.stringify(message.toString()));
                 let event = JSON.parse(message.toString());
-                if(ws) ws.terminate();
                 if(event.eventType === "dispense") {
                     util.changeLED('off');
                     if(event.timeout && !event.notesTaken) {
