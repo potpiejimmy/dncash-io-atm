@@ -37,7 +37,7 @@ export async function sendReset(repeatRequest: boolean): Promise<any> {
     }
 }
 
-export async function initCassettes() {
+async function initCassettes() {
     console.log("sending init cassettes...\n");
     await initSingleCassette("1", true);
     await initSingleCassette("2", true);
@@ -95,4 +95,10 @@ export function restartCMDV4API() {
             return setTimeout(()=>{ console.log("restart CMDV4 API DONE"); resolve()},1500);
         },1500);
     });
+}
+
+export function restartPi() {
+    console.log("restarting Raspberry Pi in 3 seconds ...");
+    util.changeLED('off');
+    setTimeout(() => {process.exec('sudo init 6')},3000);
 }
