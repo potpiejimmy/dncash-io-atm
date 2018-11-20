@@ -16,6 +16,7 @@ export async function getCassetteData(ignoreCassetteDefect: boolean, repeatReque
             return getCassetteData(ignoreCassetteDefect, false);
         }
     }
+    
     if(!cmdV4ApiResponse)
         return util.handleCMDV4Response(cmdV4ApiResponse);
     if(!cmdV4ApiResponse.ok)
