@@ -76,7 +76,7 @@ async function createTrigger(repeat: boolean): Promise<void> {
     try {
         let res;
         try {
-            res = await cashApi.createTrigger(300, device_uuid)
+            res = await cashApi.createTrigger(500000, device_uuid)
         } catch(err) {
             if(repeat)
                 return util.asyncPause(5000).then(() => createTrigger(false));
