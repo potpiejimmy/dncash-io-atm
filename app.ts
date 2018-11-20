@@ -40,7 +40,7 @@ async function init() {
     if(config.USE_MQTT)
         initMQTT();
     else
-        createTrigger();
+        createTrigger(true);
 }
 
 async function reinit() {
@@ -54,7 +54,7 @@ function initMQTT() {
     mqttClient = mqtt.connect(config.DN_MQTT_URL, {username: config.DN_MQTT_USER, password: config.DN_MQTT_PASSWORD});
     mqttClient.on('connect', () => {
         console.log("MQTT connected. Creating trigger...")
-        createTrigger();
+        createTrigger(true);
     });
 
     mqttClient.on('message', (topic, message) => {
@@ -71,14 +71,26 @@ function initMQTT() {
     });
 }
 
-async function createTrigger(): Promise<void> {
+async function createTrigger(repeat: boolean): Promise<void> {
     try {
-        let res = await cashApi.createTrigger(300, device_uuid)
+        let res;
+        try {
+            res = await cashApi.createTrigger(300, device_uuid)
+        } catch(err) {
+            if(repeat)
+                return util.asyncPause(5000).then(() => createTrigger(false));
+            else {
+                util.changeLED('off');
+                console.log('trigger could not be created. Please check!');
+                process.exit(1);
+            }
+        }
+
         console.log(JSON.stringify(res)+"\n");
         if(res.error) {
             if(res.message && JSON.stringify(res.message).includes("device with UUID " + device_uuid + " not found.")) {
                 await reinit();
-                createTrigger();
+                createTrigger(true);
             }
             return Promise.resolve();
         }
@@ -105,7 +117,7 @@ async function listenForTrigger(trigger: string): Promise<any> {
     } else {
         fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
             return handleToken(token);
-        }).catch(() => createTrigger());
+        }).catch(() => createTrigger(true));
 
         util.changeLED('on');
     }
@@ -136,7 +148,7 @@ async function handleToken(token: any): Promise<any> {
         await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,token.amount, "This device does not support " + token.type + " tokens."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
 
     // we are finished -> create new trigger
-    createTrigger();
+    createTrigger(true);
 }
 
 async function processCashoutToken(token) {

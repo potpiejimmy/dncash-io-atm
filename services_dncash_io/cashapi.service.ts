@@ -26,6 +26,14 @@ export function requestTrigger(triggercode: string): Promise<any> {
     return invokeBackend(config.DN_API_URL+"trigger/"+triggercode, "POST", {});
 }
 
-function invokeBackend(url: string, method: string, body?: any) : Promise<any> {
-    return fetch.default(url, {agent:util.getAgent(url), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: method, body: JSON.stringify(body)}).then(res => res.json());
+function invokeBackend(url: string, method: string, body?: any, noRepeat?: boolean) : Promise<any> {
+    return fetch.default(url, {agent:util.getAgent(url), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: method, body: JSON.stringify(body)
+        }).then(res => res.json()).catch(err => {
+            console.log('could not reach dncash.io')
+            if(!noRepeat) {
+                process.exit(1);
+            } else {
+                return util.asyncPause(5000).then(() => invokeBackend(url, method, body, true));
+            }
+        });
 }

@@ -131,3 +131,7 @@ export async function changeLED(status: string) {
         //nothing to do here if it cannot be reached.
     }
 }
+
+export async function asyncPause(miliseconds: number) {
+    return new Promise(resolve => setTimeout(resolve, miliseconds));
+}

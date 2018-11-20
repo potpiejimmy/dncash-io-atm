@@ -80,19 +80,22 @@ async function initSingleCassette(cassetteId: string, repeatRequest: boolean) {
     else
         console.log("cassette " + cassetteId + " failed to initialize.")
     
-    await setTimeout(() =>{},1000)
+    await util.asyncPause(1000);
     
     return cmdV4ApiResponse;
 }
 
 export function restartCMDV4API() {
     console.log("restarting CMDV4 API");
-    return new Promise(function(resolve, reject) {
+    return new Promise(async function(resolve, reject) {
         process.exec('sudo /etc/init.d/cmdv4rest stop')
-        return setTimeout(() => {
-            process.exec('sudo /etc/init.d/cmdv4rest start');
-            //wait 1500ms to finish start
-            return setTimeout(()=>{ console.log("restart CMDV4 API DONE"); resolve()},1500);
-        },1500);
+        await util.asyncPause(1500);
+        
+        process.exec('sudo /etc/init.d/cmdv4rest start');
+        //wait 1500ms to finish start
+        await util.asyncPause(1500);
+        
+        console.log("restart CMDV4 API DONE");
+        resolve();
     });
 }
