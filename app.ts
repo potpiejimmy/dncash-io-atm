@@ -188,7 +188,7 @@ async function processCashoutToken(token) {
                         await cashout.sendRetract(true);
                         return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,token.amount,"Notes were not taken. Retract was executed."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
                     } else if(!event.timeout && event.notesTaken) {
-                        let cassetteData = await cassettes.getCassetteData(true, true);
+                        let cassetteData; // = use static cassette values and not -> await cassettes.getCassetteData(true, true);
                         return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed"), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
                     }
                 }

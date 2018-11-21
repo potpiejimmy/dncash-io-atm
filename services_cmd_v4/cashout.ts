@@ -28,6 +28,8 @@ export async function dispenseMoney(token: any): Promise<any> {
 export async function dispense(cashoutRequest: any, repeatRequest: boolean): Promise<any> {
     console.log("sending CMDV4 dispense command with: " + JSON.stringify(cashoutRequest) + "\n");
     let cmdV4ApiResponse;
+    //wait half a second to not stress the API
+    await util.asyncPause(500);
     try {
         cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"dispense",{ agent: util.getAgent(config.CMD_V4_API_URL), headers: util.getJsonHeader(), method: "POST", body: JSON.stringify(cashoutRequest)});
     } catch(err) {

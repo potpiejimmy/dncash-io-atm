@@ -34,7 +34,7 @@ export function getJsonHeader(): any {
 export function calculateCashoutAmount(cassetteData: any, dispenseResponse: any): any {
     console.log("Cassette data for amount calc: " + JSON.stringify(cassetteData) + "\n");
 
-    if(cassetteData.failed)
+    if(!cassetteData || cassetteData.failed)
         //fallback for symbioticon -> use the cassette values we know of to not crash!
         cassetteData = [{"id":"1", "denomination":500},{"id":"2", "denomination":1000},{"id":"3", "denomination":2000},{"id":"4", "denomination":5000}]
     
