@@ -69,6 +69,7 @@ export async function initStorageAndDevice(): Promise<string> {
 }
 
 export async function waitForWebsocketEvent(ws: any, eventType: string, timeout: number, repeat: boolean): Promise<any> {
+    let alreadyProcessed = false;
     try {
         ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
     } catch(err) {
@@ -84,24 +85,27 @@ export async function waitForWebsocketEvent(ws: any, eventType: string, timeout:
         ws.onopen = () => console.log("CMD V4 WebSocket OPEN");
 
         ws.onclose = m => {
+            alreadyProcessed = true;
             console.log("CMD V4 WebSocket CLOSED: " + m.reason);
             reject("timeout");
         }
 
         ws.onmessage = m => {
             if(JSON.parse(m.data.toString()).eventType === eventType) {
+                alreadyProcessed = true;
                 ws.terminate();
                 resolve(m.data);
             }
         };
 
         ws.onerror = m => {
+            alreadyProcessed = true;
             ws.terminate();
             reject("CMD V4 WebSocket ERROR: " + m.message);
         };
 
         //wait for one minute -> if no event -> just continue!
-        setTimeout(() => {if(ws)ws.terminate()}, timeout);
+        setTimeout(() => {if (ws && !alreadyProcessed) ws.terminate()}, timeout);
 
         //if(config.IS_TEST_MODE && eventType === "dispense") {
         //    //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET WITH 5s DELAY
