@@ -165,7 +165,8 @@ async function processCashoutToken(token) {
             //something went wrong, update token!
             await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(dispenseResponse.type,token.amount,dispenseResponse), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
             // -> WENN NO SUITABLE DENOM FOUND -> KEIN RESET!!!
-            if(!dispenseResponse.noReset || !dispenseResponse.restart)
+            console.log("dispense response: " + JSON.stringify(dispenseResponse));
+            if(!dispenseResponse.noReset && !dispenseResponse.restart)
                 return recovery.sendReset(true);
         } else {
             console.log("dispense triggered ... waiting for dispense event\n");
