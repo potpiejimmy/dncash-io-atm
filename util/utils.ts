@@ -130,10 +130,13 @@ export async function handleCMDV4Response(cmdV4ApiResponse: any) {
 
 export async function changeLED(status: string) {
     try {
+        console.log("LED status: " + status);
         if("blink"===status) {
+            console.log("let LED blink!");
             blinkInterval = setInterval(blinkLED,500);
         } else {
             if(blinkInterval) {
+                console.log("stop LED blinking!");
                 clearInterval(blinkInterval);
                 blinkInterval = null;
             }
