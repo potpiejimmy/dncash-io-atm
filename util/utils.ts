@@ -3,12 +3,16 @@ import { URLSearchParams } from 'url';
 import * as WebSocket from 'ws';
 import * as storage from 'node-persist';
 import * as HttpsProxyAgent from 'https-proxy-agent';
+import * as onoff from 'onoff';
+
+let LED = new onoff.Gpio(40, 'out');
+let blinkInterval: NodeJS.Timeout;
 
 import * as config from '../config/config';
 import * as cashApi from '../services_dncash_io/cashapi.service';
 import * as recovery from './recovery';
 import * as responseHelper from './responsebuilder';
-import * as test from '../test/test';
+import * as test from '../test/test'
 
 export enum TOKEN_TYPES {
     CASHOUT = "CASHOUT",
@@ -68,15 +72,15 @@ export async function initStorageAndDevice(): Promise<string> {
     return device_uuid;
 }
 
-export async function waitForWebsocketEvent(ws: any, eventType: string, timeout: number, repeat: boolean): Promise<any> {
+export async function waitForWebsocketEvent(ws: any, eventType: string, timeout: number, canCancel?: boolean): Promise<any> {
     let alreadyProcessed = false;
     try {
         ws = new WebSocket(config.CMD_V4_API_EVENT_URL);
     } catch(err) {
         //CMD V4 API not available
-        if(repeat) {
+        if(!canCancel) {
             await recovery.restartCMDV4API();
-            return waitForWebsocketEvent(ws, eventType, timeout, false);
+            return waitForWebsocketEvent(ws, eventType, timeout, true);
         } else {
             return Promise.reject("CMDV4 API not responding");
         }
@@ -107,10 +111,10 @@ export async function waitForWebsocketEvent(ws: any, eventType: string, timeout:
         //wait for one minute -> if no event -> just continue!
         setTimeout(() => {if (ws && !alreadyProcessed) ws.terminate()}, timeout);
 
-        //if(config.IS_TEST_MODE && eventType === "dispense") {
-        //    //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET WITH 5s DELAY
-        //    setTimeout(test.sendTestResponse, 5000);
-        //}
+        if(config.IS_TEST_MODE && eventType === "dispense") {
+            //IN TESTMODE SEND RESPONSE EVENT ON WEBSOCKET WITH 5s DELAY
+            setTimeout(test.sendTestResponse, 5000);
+        }
     });
 }
 
@@ -126,14 +130,29 @@ export async function handleCMDV4Response(cmdV4ApiResponse: any) {
 
 export async function changeLED(status: string) {
     try {
-        const params = new URLSearchParams();
-        params.append('access_token', config.PARTICLE_ACCESS_TOKEN);
-        params.append('arg', status);
+        if("blink"===status) {
+            blinkInterval = setInterval(blinkLED,500);
+        } else {
+            if(blinkInterval) {
+                clearInterval(blinkInterval);
+                blinkInterval = null;
+            }
 
-        fetch.default(config.PARTICLE_URL, {method: 'POST', body: params}).catch(() =>{});//Nothing to do
+            if('on'===status)
+                LED.writeSync(1);
+            else if('off'===status)
+                LED.writeSync(0);
+        }
     } catch(err) {
-        //nothing to do here if it cannot be reached.
+        console.log(JSON.stringify(err));
     }
+}
+
+function blinkLED() {
+    if(LED.readSync() === 0)
+        LED.writeSync(1);
+    else
+        LED.writeSync(0);
 }
 
 export async function asyncPause(miliseconds: number) {

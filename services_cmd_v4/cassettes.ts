@@ -4,16 +4,16 @@ import * as recovery from '../util/recovery';
 import * as config from '../config/config';
 import * as response from '../util/responsebuilder';
 
-export async function getCassetteData(ignoreCassetteDefect: boolean, repeatRequest: boolean): Promise<any> {
+export async function getCassetteData(ignoreCassetteDefect: boolean, canCancel?: boolean): Promise<any> {
     console.log("getting cassette data\n");
     //call CMDV4 API and get Cassette Info
     let cmdV4ApiResponse;
     try {
         cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"cassettes", { agent: util.getAgent(config.CMD_V4_API_URL), headers: util.getJsonHeader(), method: "GET"});
     } catch(err) {
-        if(repeatRequest) {
+        if(!canCancel) {
             await recovery.restartCMDV4API();
-            return getCassetteData(ignoreCassetteDefect, false);
+            return getCassetteData(ignoreCassetteDefect, true);
         }
     }
     

@@ -7,15 +7,15 @@ import * as responseHelper from '../util/responsebuilder';
 
 let ws: WebSocket;
 
-export async function sendReset(repeatRequest: boolean): Promise<any> {
+export async function sendReset(canCancel?: boolean): Promise<any> {
     console.log("sending reset...\n");
     let cmdV4ApiResponse;
     try {
         cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"device", { agent: util.getAgent(config.CMD_V4_API_URL), headers: util.getJsonHeader(), method: "POST", body: JSON.stringify({"reset": true})});
     } catch(err) {
-        if(repeatRequest) {
+        if(!canCancel) {
             await restartCMDV4API();
-            return sendReset(false);
+            return sendReset(true);
         }
     }
 
@@ -23,7 +23,7 @@ export async function sendReset(repeatRequest: boolean): Promise<any> {
         console.log("waiting for 'resetDone' event...");
         let message
         try {
-            message = await util.waitForWebsocketEvent(ws, "resetDone", 60000 , true);
+            message = await util.waitForWebsocketEvent(ws, "resetDone", 60000);
         } catch(err) {
             return responseHelper.buildApiErrorResponse("No WebSocket event was triggered", "FAILED");
         }
@@ -39,14 +39,14 @@ export async function sendReset(repeatRequest: boolean): Promise<any> {
 
 async function initCassettes() {
     console.log("sending init cassettes...\n");
-    await initSingleCassette("1", true);
-    await initSingleCassette("2", true);
-    await initSingleCassette("3", true);
-    await initSingleCassette("4", true);
+    await initSingleCassette("1");
+    await initSingleCassette("2");
+    await initSingleCassette("3");
+    await initSingleCassette("4");
     console.log("init cassettes done.");
 }
 
-async function initSingleCassette(cassetteId: string, repeatRequest: boolean) {
+async function initSingleCassette(cassetteId: string, canCancel?: boolean) {
     let updateInfo = {
         "updateWithCassetteCheck": true,
         "totalCount": 1000,
@@ -61,9 +61,9 @@ async function initSingleCassette(cassetteId: string, repeatRequest: boolean) {
     try {
         cmdV4ApiResponse = await fetch.default(config.CMD_V4_API_URL+"cassettes/"+cassetteId, { agent: util.getAgent(config.CMD_V4_API_URL), headers: util.getJsonHeader(), method: "POST", body: JSON.stringify(updateInfo)});
     } catch(err) {
-        if(repeatRequest) {
+        if(!canCancel) {
             await restartCMDV4API();
-            return initSingleCassette(cassetteId,false);
+            return initSingleCassette(cassetteId,true);
         }
     }
 

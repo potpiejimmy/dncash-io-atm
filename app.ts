@@ -41,7 +41,7 @@ async function init() {
     if(config.USE_MQTT)
         initMQTT();
     else
-        createTrigger(true);
+        createTrigger();
 }
 
 async function reinit() {
@@ -55,7 +55,7 @@ function initMQTT() {
     mqttClient = mqtt.connect(config.DN_MQTT_URL, {username: config.DN_MQTT_USER, password: config.DN_MQTT_PASSWORD});
     mqttClient.on('connect', () => {
         console.log("MQTT connected. Creating trigger...")
-        createTrigger(true);
+        createTrigger();
     });
 
     mqttClient.on('message', (topic, message) => {
@@ -72,14 +72,14 @@ function initMQTT() {
     });
 }
 
-async function createTrigger(repeat: boolean): Promise<void> {
+async function createTrigger(canCancel?: boolean): Promise<void> {
     try {
         let res;
         try {
             res = await cashApi.createTrigger(500000, device_uuid)
         } catch(err) {
-            if(repeat)
-                return util.asyncPause(5000).then(() => createTrigger(false));
+            if(!canCancel)
+                return util.asyncPause(5000).then(() => createTrigger(true));
             else {
                 util.changeLED('off');
                 console.log('trigger could not be created. Please check!');
@@ -91,7 +91,7 @@ async function createTrigger(repeat: boolean): Promise<void> {
         if(res.error) {
             if(res.message && JSON.stringify(res.message).includes("device with UUID " + device_uuid + " not found.")) {
                 await reinit();
-                createTrigger(true);
+                createTrigger();
             }
             return Promise.resolve();
         }
@@ -118,7 +118,7 @@ async function listenForTrigger(trigger: string): Promise<any> {
     } else {
         fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
             return handleToken(token);
-        }).catch(() => createTrigger(true));
+        }).catch(() => createTrigger());
 
         util.changeLED('on');
     }
@@ -149,7 +149,7 @@ async function handleToken(token: any): Promise<any> {
         await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.REJECTED,token.amount, "This device does not support " + token.type + " tokens."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
 
     // we are finished -> create new trigger
-    createTrigger(true);
+    createTrigger();
 }
 
 async function processCashoutToken(token) {
@@ -159,7 +159,7 @@ async function processCashoutToken(token) {
 
         if(!dispenseResponse) {
             await cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.FAILED,token.amount,"Something went wrong while dispensing notes."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
-            return recovery.sendReset(true);
+            return recovery.sendReset();
         }
         else if(dispenseResponse.failed) {
             //something went wrong, update token!
@@ -167,14 +167,14 @@ async function processCashoutToken(token) {
             // -> WENN NO SUITABLE DENOM FOUND -> KEIN RESET!!!
             console.log("dispense response: " + JSON.stringify(dispenseResponse));
             if(!dispenseResponse.noReset && !dispenseResponse.restart)
-                return recovery.sendReset(true);
+                return recovery.sendReset();
         } else {
             console.log("dispense triggered ... waiting for dispense event\n");
             util.changeLED('blink');
             //waiting for CMD V4 dispense Event response
             let message;
             try {
-                message = await util.waitForWebsocketEvent(ws,"dispense", 30000, true);
+                message = await util.waitForWebsocketEvent(ws,"dispense", 30000);
             } catch(err) {
                 console.log("No WebSocket event was triggered.")
                 //do not update token -> keep it in locked 
@@ -186,10 +186,10 @@ async function processCashoutToken(token) {
                 if(event.eventType === "dispense") {
                     util.changeLED('off');
                     if(event.timeout && !event.notesTaken) {
-                        await cashout.sendRetract(true);
+                        await cashout.sendRetract();
                         return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.RETRACTED,token.amount,"Notes were not taken. Retract was executed."), device_uuid).then(returnedToken => handleReturnedToken(returnedToken, token));
                     } else if(!event.timeout && event.notesTaken) {
-                        let cassetteData; // = use static cassette values and not -> await cassettes.getCassetteData(true, true);
+                        let cassetteData; // = use static cassette values and not -> await cassettes.getCassetteData(true);
                         return cashApi.confirmToken(token.uuid, resHelper.createTokenUpdateResponse(util.TOKEN_STATES.COMPLETED, util.calculateCashoutAmount(cassetteData, dispenseResponse), "Cashout was completed"), device_uuid).then(returnedToken => handleReturnedToken(returnedToken,token));
                     }
                 }
