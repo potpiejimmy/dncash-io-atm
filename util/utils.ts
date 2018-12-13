@@ -1,11 +1,9 @@
-import * as fetch from 'node-fetch';
-import { URLSearchParams } from 'url';
 import * as WebSocket from 'ws';
 import * as storage from 'node-persist';
 import * as HttpsProxyAgent from 'https-proxy-agent';
 import * as onoff from 'onoff';
 
-let LED = new onoff.Gpio(40, 'out');
+let LED = new onoff.Gpio(21, 'out');
 let blinkInterval: NodeJS.Timeout;
 
 import * as config from '../config/config';
