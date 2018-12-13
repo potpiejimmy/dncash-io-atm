@@ -131,7 +131,7 @@ export async function changeLED(status: string) {
         console.log("LED status: " + status);
         if("blink"===status) {
             console.log("let LED blink!");
-            blinkInterval = setInterval(blinkLED,500);
+            blinkInterval = setInterval(() => {LED.writeSync(LED.readSync()^1);},500);
         } else {
             if(blinkInterval) {
                 console.log("stop LED blinking!");
@@ -147,13 +147,6 @@ export async function changeLED(status: string) {
     } catch(err) {
         console.log(JSON.stringify(err));
     }
-}
-
-function blinkLED() {
-    if(LED.readSync() === 0)
-        LED.writeSync(1);
-    else
-        LED.writeSync(0);
 }
 
 export async function asyncPause(miliseconds: number) {
