@@ -74,6 +74,9 @@ function initMQTT() {
 }
 
 async function createTrigger(canCancel?: boolean): Promise<void> {
+    //set LED to off when creating new trigger
+    util.changeLED('off')
+    
     try {
         let res;
         try {
@@ -119,9 +122,7 @@ async function listenForTrigger(trigger: string): Promise<any> {
     } else {
         fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), timeout: TRIGGER_LIFETIME_SECONDS*1000, headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
             return handleToken(token);
-        }).catch(() => {
-            util.changeLED('off');
-            createTrigger()});
+        }).catch(() => createTrigger());
 
         util.changeLED('on');
     }
