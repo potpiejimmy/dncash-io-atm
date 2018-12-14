@@ -1,10 +1,10 @@
 //API KEY AND SECRET FOR DNCASH.IO
-export const DN_CASH_API_KEY = process.env.DN_CASH_API_KEY || "m0bmhdgabgzt4ab80fwr2rn9cb8ht4da82988m80tbk8npv91vju5pgdyvvndv7n";
-export const DN_CASH_API_SECRET = process.env.DN_CASH_API_SECRET || "cjw52dy8k9xah7zumqr2gqpfub8h4f9t7extw7td9mahy55tvnd2kqugx3pbf892";
+export const DN_CASH_API_KEY = process.env.DN_CASH_API_KEY || "u6xbj5wz0q7q8u62muhzbm6awtq6mn0b10kh7dmrz9xvmrug4ubp7qnvwyv6mqp6";
+export const DN_CASH_API_SECRET = process.env.DN_CASH_API_SECRET || "tjvxtbjdntxjg52cy2wtz34e7n44vfk72fcy17rxg44xd7z929y40ryqeet9qccg";
 //USE STATIC TRIGGER
 export const USE_STATIC_TRIGGER = process.env.USE_STATIC_TRIGGER || true;
 //API URL FOR DNCASH.IO
-export const DN_API_URL = process.env.DN_API_URL || 'https://api.dncash.io/dnapi/cash/v1/';
+export const DN_API_URL = process.env.DN_API_URL || 'https://dncashapi.dn-sol.net/dnapi/cash/v1/';
 //CMD V4 API URL
 export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "http://localhost:80/cmdv4/v1/";
 //CMD V4 EVENT API URL

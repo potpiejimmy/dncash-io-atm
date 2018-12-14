@@ -76,11 +76,11 @@ function initMQTT() {
 async function createTrigger(canCancel?: boolean): Promise<void> {
     //set LED to off when creating new trigger
     util.changeLED('off')
-    
+
     try {
         let res;
         try {
-            res = await cashApi.createTrigger(TRIGGER_LIFETIME_SECONDS+5, device_uuid)
+            res = await cashApi.createTrigger(TRIGGER_LIFETIME_SECONDS, device_uuid)
         } catch(err) {
             if(!canCancel)
                 return util.asyncPause(5000).then(() => createTrigger(true));
@@ -120,7 +120,7 @@ async function listenForTrigger(trigger: string): Promise<any> {
         mqttClient.subscribe('dncash-io/trigger/' + trigger, () => { console.log("MQTT subscribed for trigger: " + trigger)});    
         util.changeLED('on');
     } else {
-        fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), timeout: TRIGGER_LIFETIME_SECONDS*1000, headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
+        fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), timeout: TRIGGER_LIFETIME_SECONDS*1000-5000, headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
             return handleToken(token);
         }).catch(() => createTrigger());
 
