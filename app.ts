@@ -19,7 +19,8 @@ import * as nfc from './tag_writer/nfc';
 console.log("=== The ultimate banking machine API: " + new Date() + " ===\n");
 
 let device_uuid: string;
-let canProcessToken = false;
+let canProcessToken: boolean = false;
+let TRIGGER_LIFETIME_SECONDS: number = 300;
 
 let ws: WebSocket;
 let mqttClient: mqtt.Client;
@@ -76,7 +77,7 @@ async function createTrigger(canCancel?: boolean): Promise<void> {
     try {
         let res;
         try {
-            res = await cashApi.createTrigger(500000, device_uuid)
+            res = await cashApi.createTrigger(TRIGGER_LIFETIME_SECONDS+5, device_uuid)
         } catch(err) {
             if(!canCancel)
                 return util.asyncPause(5000).then(() => createTrigger(true));
@@ -116,7 +117,7 @@ async function listenForTrigger(trigger: string): Promise<any> {
         mqttClient.subscribe('dncash-io/trigger/' + trigger, () => { console.log("MQTT subscribed for trigger: " + trigger)});    
         util.changeLED('on');
     } else {
-        fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
+        fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), timeout: TRIGGER_LIFETIME_SECONDS*1000, headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
             return handleToken(token);
         }).catch(() => createTrigger());
 
