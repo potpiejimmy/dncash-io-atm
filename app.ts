@@ -3,6 +3,7 @@ import * as fetch from 'node-fetch';
 import * as mqtt from 'mqtt';
 import * as WebSocket from 'ws';
 import * as storage from 'node-persist';
+import * as crypto from 'crypto';
 
 import * as cashApi from './services_dncash_io/cashapi.service';
 import * as cashout from './services_cmd_v4/cashout';
@@ -21,6 +22,7 @@ console.log("=== The ultimate banking machine API: " + new Date() + " ===\n");
 let device_uuid: string;
 let canProcessToken: boolean = false;
 let TRIGGER_LIFETIME_SECONDS: number = 300;
+const verifier = crypto.createVerify('sha256');
 
 let ws: WebSocket;
 let mqttClient: mqtt.Client;
@@ -117,7 +119,7 @@ async function listenForTrigger(trigger: string): Promise<any> {
     console.log("Can process token? " + canProcessToken);
 
     if(config.USE_MQTT) {
-        mqttClient.subscribe('dncash-io/trigger/' + trigger, () => { console.log("MQTT subscribed for trigger: " + trigger)});    
+        mqttClient.subscribe('dncash-io/trigger/v1/' + trigger, () => { console.log("MQTT subscribed for trigger: " + trigger)});    
         util.changeLED('on');
     } else {
         fetch.default(config.DN_API_URL+"trigger/"+trigger, { agent: util.getAgent(config.DN_API_URL), timeout: TRIGGER_LIFETIME_SECONDS*1000-5000, headers: {"DN-API-KEY": config.DN_CASH_API_KEY,"DN-API-SECRET": config.DN_CASH_API_SECRET, "Content-Type": "application/json"}, method: "GET"}).then(response => response.json()).then(token => {
@@ -130,7 +132,12 @@ async function listenForTrigger(trigger: string): Promise<any> {
 
 function handleMessage(topic, message) {
     let msg = JSON.parse(message.toString());
-    handleToken(msg.token);
+    verifier.update(msg.data);
+
+    if(verifier.verify(config.DN_MQTT_PUB_KEY, Buffer.from(msg.signature,'base64')))
+        handleToken(JSON.parse(msg.data).token);
+    else
+        console.log("invalid signature for token: " + JSON.stringify(msg));
 }
 
 async function handleToken(token: any): Promise<any> {
@@ -143,7 +150,7 @@ async function handleToken(token: any): Promise<any> {
 
     //unsubscribe for this trigger to not listen for more tokens!
     if(config.USE_MQTT && !config.USE_STATIC_TRIGGER) {
-        mqttClient.unsubscribe("dncash-io/trigger/+", () => { console.log("MQTT unsubscribed.")});
+        mqttClient.unsubscribe("dncash-io/trigger/v1/+", () => { console.log("MQTT unsubscribed.")});
     }
 
     if(util.TOKEN_TYPES.CASHOUT === token.type)

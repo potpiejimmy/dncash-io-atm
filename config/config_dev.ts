@@ -1,6 +1,6 @@
 //API KEY AND SECRET FOR DNCASH.IO
-export const DN_CASH_API_KEY = process.env.DN_CASH_API_KEY || "u6xbj5wz0q7q8u62muhzbm6awtq6mn0b10kh7dmrz9xvmrug4ubp7qnvwyv6mqp6";
-export const DN_CASH_API_SECRET = process.env.DN_CASH_API_SECRET || "tjvxtbjdntxjg52cy2wtz34e7n44vfk72fcy17rxg44xd7z929y40ryqeet9qccg";
+export const DN_CASH_API_KEY = process.env.DN_CASH_API_KEY || "a1bptmxja98z0yar23zydk41hd7dth6anx3xv5nrqv0mngmzp9t570znmya3rb5t";
+export const DN_CASH_API_SECRET = process.env.DN_CASH_API_SECRET || "t3fajtnqun507jx9vqz189qz2kmd95r0px7ja2ujpeerm0kz4jbrt0xub4y6nz06";
 //USE STATIC TRIGGER
 export const USE_STATIC_TRIGGER = process.env.USE_STATIC_TRIGGER || true;
 //API URL FOR DNCASH.IO
@@ -17,6 +17,8 @@ export const DN_MQTT_URL = process.env.DN_MQTT_URL || 'mqtt://52.59.204.65:1883'
 export const DN_MQTT_USER = process.env.DN_MQTT_USER || 'dncashio';
 //MQTT PASSWIRD
 export const DN_MQTT_PASSWORD = process.env.DN_MQTT_PASSWORD || 'dncashio';
+//MQTT PUBLIC KEY TO VERIFY TOKEN
+export const DN_MQTT_PUB_KEY = process.env.DN_MQTT_PUB_KEY || '-----BEGIN PUBLIC KEY-----\nMFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJ5W3+QfNgZaMoW2QiVpxtBg556IgD4y\nzWDFyurMsT5qBPkJulPxtTd8Kf81mkA79BOKbZiRT3U0QGowJYUaxTsCAwEAAQ==\n-----END PUBLIC KEY-----';
 //USE PROXY TO TUNNEL HTTPS REQUESTS
 export const USE_PROXY = process.env.USE_PROXY || false;
 //PROXY URL FOR HTTPS REQUESTS

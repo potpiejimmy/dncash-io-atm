@@ -14,19 +14,19 @@
     "https-proxy-agent": "^2.2.1",
     "mqtt": "^2.18.8",
     "node-fetch": "^2.3.0",
-    "node-persist": "^3.0.1",
+    "node-persist": "^3.0.2",
     "onoff": "^3.2.2",
-    "typescript": "^3.2.1",
+    "typescript": "^3.2.2",
     "ws": "^6.1.2"
   },
   "devDependencies": {
     "@types/mqtt": "^2.5.0",
-    "@types/node": "^10.12.12",
+    "@types/node": "^10.12.18",
     "@types/node-fetch": "^2.1.4",
     "@types/node-persist": "0.0.33",
     "@types/onoff": "^3.2.1",
     "@types/ws": "^6.0.1",
     "concurrently": "^4.1.0",
-    "nodemon": "^1.18.7"
+    "nodemon": "^1.18.9"
   }
 }

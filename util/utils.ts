@@ -1,9 +1,14 @@
 import * as WebSocket from 'ws';
 import * as storage from 'node-persist';
 import * as HttpsProxyAgent from 'https-proxy-agent';
-import * as onoff from 'onoff';
 
-let LED = new onoff.Gpio(21, 'out');
+let LED;
+//only on not windows machines!
+if(process.platform === "linux") {
+    var onoff = require('onoff');
+    LED = new onoff.Gpio(21, 'out');
+}
+
 let blinkInterval: NodeJS.Timeout;
 
 import * as config from '../config/config';
@@ -128,21 +133,25 @@ export async function handleCMDV4Response(cmdV4ApiResponse: any) {
 
 export async function changeLED(status: string) {
     try {
-        console.log("LED status: " + status);
-        if("blink"===status) {
-            console.log("let LED blink!");
-            blinkInterval = setInterval(() => {LED.writeSync(LED.readSync()^1);},500);
-        } else {
-            if(blinkInterval) {
-                console.log("stop LED blinking!");
-                clearInterval(blinkInterval);
-                blinkInterval = null;
-            }
+        if(LED) {
+            console.log("LED status: " + status);
+            if("blink"===status) {
+                console.log("let LED blink!");
+                blinkInterval = setInterval(() => {LED.writeSync(LED.readSync()^1);},500);
+            } else {
+                if(blinkInterval) {
+                    console.log("stop LED blinking!");
+                    clearInterval(blinkInterval);
+                    blinkInterval = null;
+                }
 
-            if('on'===status)
-                LED.writeSync(1);
-            else if('off'===status)
-                LED.writeSync(0);
+                if('on'===status)
+                    LED.writeSync(1);
+                else if('off'===status)
+                    LED.writeSync(0);
+            }
+        } else {
+            console.log("not changing LED under windoof.")
         }
     } catch(err) {
         console.log(JSON.stringify(err));
