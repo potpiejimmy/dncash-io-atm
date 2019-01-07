@@ -149,7 +149,7 @@ async function handleToken(token: any): Promise<any> {
         canProcessToken = false;
 
     //unsubscribe for this trigger to not listen for more tokens!
-    if(config.USE_MQTT && !config.USE_STATIC_TRIGGER) {
+    if(config.USE_MQTT) {
         mqttClient.unsubscribe("dncash-io/trigger/v1/+", () => { console.log("MQTT unsubscribed.")});
     }
 

@@ -1,8 +1,6 @@
 //API KEY AND SECRET FOR DNCASH.IO
 export const DN_CASH_API_KEY = process.env.DN_CASH_API_KEY || "a1bptmxja98z0yar23zydk41hd7dth6anx3xv5nrqv0mngmzp9t570znmya3rb5t";
 export const DN_CASH_API_SECRET = process.env.DN_CASH_API_SECRET || "t3fajtnqun507jx9vqz189qz2kmd95r0px7ja2ujpeerm0kz4jbrt0xub4y6nz06";
-//USE STATIC TRIGGER
-export const USE_STATIC_TRIGGER = process.env.USE_STATIC_TRIGGER || true;
 //API URL FOR DNCASH.IO
 export const DN_API_URL = process.env.DN_API_URL || 'https://dncashapi.dn-sol.net/dnapi/cash/v1/';
 //CMD V4 API URL
