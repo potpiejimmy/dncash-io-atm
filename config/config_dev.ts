@@ -6,7 +6,7 @@ export const DN_API_URL = process.env.DN_API_URL || 'https://dncashapi.dn-sol.ne
 //CMD V4 API URL
 export const CMD_V4_API_URL = process.env.CMD_V4_API_URL || "https://1bba0bcb-eaf3-4720-8173-8590fe3c45df.mock.pstmn.io/";
 //CMD V4 EVENT API URL
-export const CMD_V4_API_EVENT_URL = process.env.CMD_V4_API_EVENT_URL || "ws://localhost:80/cmdv4/v1/events";
+export const CMD_V4_API_EVENT_URL = process.env.CMD_V4_API_EVENT_URL || "ws://localhost:8080/cmdv4/v1/events";
 //USE MQTT OR HTTP REQUEST
 export const USE_MQTT = process.env.USE_MQTT || false;
 //MQTT URL FOR DNCASH.IO
