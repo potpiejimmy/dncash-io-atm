@@ -7,7 +7,6 @@ import * as crypto from 'crypto';
 
 import * as cashApi from './services_dncash_io/cashapi.service';
 import * as cashout from './services_cmd_v4/cashout';
-import * as cassettes from './services_cmd_v4/cassettes';
 
 import * as config from './config/config';
 import * as resHelper from './util/responsebuilder';
