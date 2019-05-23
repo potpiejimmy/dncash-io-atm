@@ -37,7 +37,7 @@ export async function sendReset(canCancel?: boolean): Promise<any> {
     }
 }
 
-async function initCassettes() {
+export async function initCassettes() : Promise<void> {
     console.log("sending init cassettes...\n");
     await initSingleCassette("1");
     await initSingleCassette("2");

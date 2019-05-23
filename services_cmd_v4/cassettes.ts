@@ -25,11 +25,11 @@ export async function getCassetteData(ignoreCassetteDefect: boolean, canCancel?:
         let cassetteData = await cmdV4ApiResponse.json();
         //let cassetteData = {"1LOW":50,"RACT":1006,"3L_D":0,"4L_D":0,"1TOL":0,"3CUR":"EUR","2VAL":10,"2REJ":1,"4REJ":0,"1CUR":"EUR","SRACT":0,"2ACT":976,"3LOW":50,"RRET":6,"1REJ":5,"3VAL":20,"LEN":511,"4VAL":50,"1L_D":0,"4ACT":979,"4LEN":0,"3LEN":0,"2L_D":0,"3ACT":979,"1LEN":0,"1NDV":0,"1VAL":5,"2NDV":0,"1REL":0,"2LOW":50,"4NUM":"4444444","4NDV":0,"3NUM":"3333333","3STA":"D","2NUM":"2222222","2STA":"N","3TOL":0,"3NDV":0,"2REL":0,"RSTA":"R","4REL":0,"4STA":"N","2TOL":0,"4LOW":50,"4CUR":"EUR","4TOL":0,"3REJ":0,"1STA":"N","1NUM":"1111111","1ACT":974,"2LEN":0,"3REL":0,"2CUR":"EUR"};
         console.log("cassette data CMDV4 api response: " + JSON.stringify(cassetteData) + "\n");
-        return parseCassetteData(cassetteData, ignoreCassetteDefect);
+        return parseCassetteData(cassetteData, ignoreCassetteDefect, canCancel);
     }
 }
 
-function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean): any {
+async function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean, canCancel?: boolean): Promise<any> {
     let cassettes = [];
     for(var key in cassetteApiInfo) {
         if(cassetteApiInfo.hasOwnProperty(key)) {
@@ -57,8 +57,17 @@ function parseCassetteData(cassetteApiInfo: any, ignoreCassetteDefect: boolean):
         }
     }
 
-    if(cassettes.length <= 0)
-        cassettes = response.buildApiErrorResponse("No cassette is working at the moment. Executing reset...", "FAILED");
+    if(cassettes.length <= 0) {
+        if(!canCancel) {
+            console.log("no cassette seems to be initialized yet or wrong data was sent. trying to recover.");
+            await recovery.restartCMDV4API();
+            await recovery.initCassettes();
+            return getCassetteData(ignoreCassetteDefect, true);
+        } else {
+            console.log("recovery didn`t work. seems we need a reset -> process failed token.")
+            cassettes = response.buildApiErrorResponse("No cassette is working at the moment. Executing reset...", "FAILED");
+        }
+    }
 
     return cassettes;
 }

@@ -1,4 +1,3 @@
-import { addListener } from "cluster";
 import * as recovery from './recovery';
 
 export function buildErrorResponseFromCmdV4(cmdV4ApiResponse: any) {
