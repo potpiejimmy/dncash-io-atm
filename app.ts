@@ -21,7 +21,6 @@ console.log("=== The ultimate banking machine API: " + new Date() + " ===\n");
 let device_uuid: string;
 let canProcessToken: boolean = false;
 let TRIGGER_LIFETIME_SECONDS: number = 300;
-const verifier = crypto.createVerify('sha256');
 
 let ws: WebSocket;
 let mqttClient: mqtt.Client;
@@ -131,6 +130,7 @@ async function listenForTrigger(trigger: string): Promise<any> {
 
 function handleMessage(topic, message) {
     let msg = JSON.parse(message.toString());
+    let verifier = crypto.createVerify('sha256');
     verifier.update(msg.data);
 
     if(verifier.verify(config.DN_MQTT_PUB_KEY, Buffer.from(msg.signature,'base64')))
