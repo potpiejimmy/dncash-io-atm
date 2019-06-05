@@ -26,7 +26,7 @@ export const WRITE_NFC_TAG = process.env.WRITE_NFC_TAG || false;
 //NFC TAG API URL
 export const NFC_TAG_API_URL = process.env.NFC_TAG_API_URL || "http://localhost:5555/";
 //NFC TAG URL
-export const NFC_TAG_URL = process.env.NFC_TAG_URL || "https://dncashatm.dn-sol.net/dncashdemo.html?triggercode=";
+export const NFC_TAG_URL = process.env.NFC_TAG_URL || "https://instant.dncash.io?triggercode=";
 
 
 /*

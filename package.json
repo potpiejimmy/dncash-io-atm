@@ -12,7 +12,9 @@
   "license": "ISC",
   "dependencies": {
     "https-proxy-agent": "^2.2.1",
+    "i2c-bus": "^4.0.9",
     "mqtt": "^2.18.8",
+    "ndef": "^0.2.0",
     "node-fetch": "^2.3.0",
     "node-persist": "^3.0.2",
     "onoff": "^3.2.2",
